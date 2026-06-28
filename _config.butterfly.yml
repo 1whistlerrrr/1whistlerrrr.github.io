@@ -25,13 +25,13 @@ social:
   fab fa-github: https://github.com/1whistlerrrr || Github || '#24292e'
   fas fa-envelope: mailto:1whistlerrrr@email.com || Email || '#4a7dbe'
 
-favicon: https://cdn.jsdelivr.net/npm/simple-icons@5.2.0/icons/github.svg
+favicon: /img/favicon.ico
 
 avatar:
   img: https://api.dicebear.com/7.x/avataaars/svg?seed=LiuChuyao
   effect: true
 
-index_img: https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20tech%20blog%20header%20gradient%20blue%20purple&image_size=landscape_16_9
+index_img: https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=80
 
 index_layout: 3
 
