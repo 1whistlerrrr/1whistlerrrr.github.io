@@ -104,3 +104,10 @@ deploy:
   type: git
   repo: https://github.com/1whistlerrrr/1whistlerrrr.github.io.git
   branch: main
+
+# Search
+search:
+  path: search.xml
+  field: post
+  content: true
+  format: html
