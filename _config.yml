@@ -3,10 +3,10 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: 个人技术博客
-subtitle: '记录技术成长，分享学习心得'
-description: '一个专注于技术分享的个人博客，包含前端开发、后端技术、系统架构等内容'
-keywords: 技术博客,前端开发,后端技术,系统架构
+title: AI Agent & 自动化工具
+subtitle: '专注于 AI Agent 和自动化工具流的技术博客'
+description: '探索 AI Agent 技术、自动化工具开发，分享 Java、Python 技术实践和智能工作流设计'
+keywords: AI Agent,自动化工具,Java,Python,LangChain,工作流自动化
 author: Liu Chuyao
 language: zh-CN
 timezone: Asia/Shanghai

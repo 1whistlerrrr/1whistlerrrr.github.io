@@ -10,130 +10,146 @@ type: "knowledge"
 
 ---
 
-## 💻 前端技术
+## 🧠 AI Agent（核心方向）
 
 {% markmap %}
-# 前端技术
-## HTML/CSS
-- HTML5 语义化
-- CSS3 动画
-- Flexbox/Grid
-- 响应式设计
-## JavaScript
-- ES6+ 语法
-- 异步编程
-- 模块化
+# AI Agent
+## 基础概念
+- 智能代理定义
+- Agent 架构模式
+- 感知-决策-行动循环
+- 记忆与学习
+## 核心技术
+- 大语言模型
+  - GPT
+  - LLaMA
+  - Qwen
+  - Claude
+- 框架与工具
+  - LangChain
+  - LangGraph
+  - AutoGPT
+  - CrewAI
+- 向量数据库
+  - Pinecone
+  - Milvus
+  - Chroma
+  - FAISS
+## 应用场景
+- 自动化办公
+- 代码生成与调试
+- 数据分析与报告
+- 智能客服
+## Multi-Agent
+- Agent 协作模式
+- 任务拆分与分配
+- 通信与协调
+- 群体智能
+{% endmarkmap %}
+
+---
+
+## ☕ Java 技术栈
+
+{% markmap %}
+# Java 技术栈
+## 基础
+- Java 8/11/21
+- JVM 原理
 - 设计模式
+- 并发编程
 ## 框架
-- React
-  - Hooks
-  - Redux
-  - Next.js
-- Vue
-  - Vue 3
-  - Composition API
-  - Nuxt.js
-## 工程化
-- Webpack/Vite
-- TypeScript
-- 测试框架
-- CI/CD
-{% endmarkmap %}
-
----
-
-## 🚀 后端技术
-
-{% markmap %}
-# 后端技术
-## 语言
-- Node.js
-- Python
-- Go
-- Java
-## 框架
-- Express
-- Django
-- Gin
 - Spring Boot
-## 数据库
-- MySQL
-- MongoDB
-- Redis
-- PostgreSQL
-## 中间件
-- RabbitMQ
-- Kafka
-- Nginx
-- Docker
+- Spring Cloud
+- MyBatis
+- Hibernate
+## 微服务
+- 服务发现
+- 负载均衡
+- 熔断降级
+- 分布式事务
+## 性能优化
+- JVM 调优
+- 数据库优化
+- 缓存策略
+- 异步处理
 {% endmarkmap %}
 
 ---
 
-## ☁️ 云原生与 DevOps
+## 🐍 Python 技术栈
 
 {% markmap %}
-# 云原生与 DevOps
-## 容器化
-- Docker
-- Kubernetes
-- Docker Compose
+# Python 技术栈
+## 基础
+- Python 3.x
+- 异步编程
+- 类型注解
+- 包管理
+## AI/ML
+- 机器学习
+- 深度学习
+- 自然语言处理
+- 计算机视觉
+## 框架
+- FastAPI
+- Django
+- Flask
+- Streamlit
+## 自动化
+- 脚本开发
+- Web 爬虫
+- 数据处理
+- 任务调度
+{% endmarkmap %}
+
+---
+
+## 🔄 自动化工具流
+
+{% markmap %}
+# 自动化工具流
+## 工作流设计
+- 流程建模
+- 状态管理
+- 条件分支
+- 异常处理
 ## CI/CD
 - GitHub Actions
 - GitLab CI
 - Jenkins
-## 云服务
-- AWS
-- Vercel
-- Netlify
-- Serverless
-## 监控
+- Argo CD
+## 自动化工具
+- Shell Script
+- Python Automation
+- Ansible
+- Terraform
+## 监控告警
 - Prometheus
 - Grafana
 - ELK Stack
+- Alertmanager
 {% endmarkmap %}
 
 ---
 
-## 🧠 AI 与机器学习
+## ☁️ 云原生
 
 {% markmap %}
-# AI 与机器学习
-## 基础概念
-- 监督学习
-- 无监督学习
-- 强化学习
-## 深度学习
-- TensorFlow
-- PyTorch
-- 神经网络
-- Transformer
-## 应用场景
-- NLP
-- CV
-- 推荐系统
-- AIGC
-{% endmarkmap %}
-
----
-
-## 📚 学习路线
-
-{% markmap %}
-# 学习路线
-## 入门阶段
-- 基础语法
-- 数据结构
-- 算法入门
-- 项目实战
-## 进阶阶段
-- 系统设计
-- 架构模式
-- 性能优化
-- 安全知识
-## 高级阶段
-- 云原生
-- AI 应用
-- 开源贡献
-- 技术影响力
+# 云原生
+## 容器化
+- Docker
+- Kubernetes
+- Pod 设计
+- Service 发现
+## Serverless
+- Lambda
+- FaaS
+- API Gateway
+- Event Driven
+## 云服务
+- AWS
+- 阿里云
+- 腾讯云
+- 华为云
 {% endmarkmap %}
