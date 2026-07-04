@@ -7,10 +7,8 @@ nav:
 
 menu:
   首页: / || fas fa-home
-  文章: /archives/ || fas fa-archive
-  分类: /categories/ || fas fa-folder-open
-  标签: /tags/ || fas fa-tags
-  知识: /knowledge/ || fas fa-network-wired
+  归档: /archives/ || fas fa-archive
+  项目: /projects/ || fas fa-code-branch
   关于: /about/ || fas fa-user
 
 code_blocks:
