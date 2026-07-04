@@ -2,21 +2,33 @@
 
 ## 一、文章撰写流程
 
-### 1.1 新建文章
+### 1.1 使用自动化脚本新建文章
+
+```bash
+# 用法
+./scripts/publish.sh <中文标题> [英文slug]
+
+# 示例
+./scripts/publish.sh "AI Agent 入门指南" "ai-agent-introduction"
+```
+
+脚本会自动创建文件 `source/_posts/YYYY-MM-DD-英文slug.md`，并替换模板中的标题和日期。
+
+### 1.2 手动创建文章（备用）
 
 在 `source/_posts/` 目录下创建新文件，文件名格式为：
 
 ```
-YYYY-MM-DD-文章标题.md
+YYYY-MM-DD-英文slug.md
 ```
 
 示例：`2026-07-04-ai-agent-memory-mechanism.md`
 
-### 1.2 使用模板
+### 1.3 使用模板
 
 参考 `source/_posts/template.md` 文件，按照模板结构撰写文章。
 
-### 1.3 Front-matter 配置
+### 1.4 Front-matter 配置
 
 文章开头必须包含以下配置：
 
@@ -30,6 +42,8 @@ categories:
   - AI Agent
 keywords: "关键词1, 关键词2"
 description: "文章摘要，不超过150字"
+top_img: "/img/banner/ai-agent.jpg"
+cover: "/img/cover/ai-agent.png"
 ---
 ```
 
@@ -45,7 +59,7 @@ description: "文章摘要，不超过150字"
 - `top_img`：顶部横幅图片
 - `cover`：封面图片
 
-### 1.4 文章内容规范
+### 1.5 文章内容规范
 
 **格式要求**：
 - 使用 Markdown 语法
@@ -92,7 +106,7 @@ npx hexo clean && npx hexo server
 ### 3.1 暂存文件
 
 ```bash
-git add source/_posts/YYYY-MM-DD-文章标题.md
+git add source/_posts/YYYY-MM-DD-英文slug.md
 ```
 
 ### 3.2 提交更改
@@ -121,7 +135,7 @@ git push origin main
 推送后，GitHub Actions 会自动执行以下流程：
 
 1. **检出代码**：从 main 分支拉取最新代码
-2. **安装依赖**：使用 npm ci 安装依赖
+2. **安装依赖**：使用 npm ci 安装依赖（Node.js 24）
 3. **构建站点**：执行 hexo clean && hexo generate
 4. **上传产物**：将 public 目录上传为 artifact
 5. **部署到 Pages**：使用 actions/deploy-pages@v4 部署
@@ -143,6 +157,7 @@ git push origin main
 
 | 命令 | 说明 |
 |------|------|
+| `./scripts/publish.sh "标题" "slug"` | 使用脚本创建新文章 |
 | `npx hexo new "文章标题"` | 创建新文章（自动生成日期） |
 | `npx hexo generate` | 生成静态文件 |
 | `npx hexo server` | 启动本地服务器 |
@@ -159,47 +174,75 @@ git push origin main
 4. **SEO 优化**：设置合适的 keywords 和 description
 5. **代码质量**：确保代码示例可以正常运行
 6. **内容原创**：确保文章内容为原创或获得授权
+7. **文件名**：使用英文 slug，避免中文文件名
 
 ---
 
-## 七、自动化脚本
+## 七、自动化脚本详解
 
-### 7.1 快速发布脚本
+### 7.1 脚本功能
 
-创建 `scripts/publish.sh`：
+- 自动生成符合规范的文件名
+- 自动替换模板中的标题和日期
+- 支持自定义英文 slug
+- 防止重复创建文件
 
-```bash
-#!/bin/bash
+### 7.2 脚本位置
 
-if [ -z "$1" ]; then
-  echo "用法: ./scripts/publish.sh <文章标题>"
-  exit 1
-fi
-
-TITLE="$1"
-DATE=$(date +%Y-%m-%d)
-TIME=$(date +%H:%M:%S)
-FILENAME="${DATE}-${TITLE// /-}.md"
-FILEPATH="source/_posts/${FILENAME}"
-
-cp source/_posts/template.md "${FILEPATH}"
-
-sed -i.bak "s/文章标题/${TITLE}/g" "${FILEPATH}"
-sed -i.bak "s/2026-07-04/${DATE}/g" "${FILEPATH}"
-sed -i.bak "s/10:00:00/${TIME}/g" "${FILEPATH}"
-
-rm "${FILEPATH}.bak"
-
-echo "文章已创建: ${FILEPATH}"
-echo "请编辑文章内容后执行:"
-echo "  git add ${FILEPATH}"
-echo "  git commit -m \"feat: 添加文章《${TITLE}》\""
-echo "  git push origin main"
+```
+scripts/publish.sh
 ```
 
-### 7.2 使用方法
+### 7.3 使用示例
 
 ```bash
-chmod +x scripts/publish.sh
+# 创建文章，自动生成slug
 ./scripts/publish.sh "AI Agent 记忆机制详解"
+
+# 创建文章，指定自定义slug
+./scripts/publish.sh "AI Agent 记忆机制详解" "ai-agent-memory-mechanism"
+
+# 脚本输出示例
+🎉 文章已创建: source/_posts/2026-07-04-ai-agent-memory-mechanism.md
+
+📝 请编辑文章内容后执行:
+  git add source/_posts/2026-07-04-ai-agent-memory-mechanism.md
+  git commit -m "feat: 添加文章《AI Agent 记忆机制详解》"
+  git push origin main
+
+🌐 部署成功后访问: https://1whistlerrrr.github.io
+```
+
+---
+
+## 八、完整工作流流程图
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    博客文章发布工作流                        │
+├─────────────────────────────────────────────────────────────┤
+│  1. 撰写文章                                                │
+│     └── ./scripts/publish.sh "标题" "slug"                 │
+│           ↓                                                │
+│  2. 编辑内容                                                │
+│     └── 按照 template.md 模板填充内容                       │
+│           ↓                                                │
+│  3. 本地预览                                                │
+│     └── npx hexo clean && npx hexo server                 │
+│           ↓                                                │
+│  4. 检查验证                                                │
+│     └── 标题/标签/代码/图片/移动端                          │
+│           ↓                                                │
+│  5. 提交代码                                                │
+│     └── git add → git commit → git push                   │
+│           ↓                                                │
+│  6. 自动部署 (GitHub Actions)                               │
+│     ├── 检出代码                                            │
+│     ├── 安装依赖                                            │
+│     ├── 构建站点                                            │
+│     └── 部署到 Pages                                       │
+│           ↓                                                │
+│  7. 访问网站                                                │
+│     └── https://1whistlerrrr.github.io                    │
+└─────────────────────────────────────────────────────────────┘
 ```
