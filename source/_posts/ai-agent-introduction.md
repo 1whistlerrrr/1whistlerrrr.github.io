@@ -3,8 +3,6 @@ title: AI Agent 入门指南 - 构建你的第一个智能代理
 date: 2024-07-01 10:00:00
 tags:
   - AI Agent
-  - LangChain
-  - 自动化
 categories:
   - AI Agent
 ---
