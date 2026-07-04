@@ -1,16 +1,22 @@
+$highlight-background = #F6F8FA
+$highlight-selection = #80CBC440
+$highlight-foreground = #90A4AE
+$highlight-mac-border = rgba(144, 164, 174, .4)
+$highlight-gutter-color = alpha($highlight-foreground, .5)
+$highlight-gutter-bgColor = $highlight-background
+$highlight-tools-color = $highlight-foreground
+$highlight-tools-bgColor = darken($highlight-background, 5)
+$highlight-scrollbar = darken($highlight-background, 8)
+
 if $highlight_theme == 'darker'
   $highlight-background = #212121
   $highlight-selection = #61616150
   $highlight-foreground = #EEFFFF
   $highlight-mac-border = rgba(0, 0, 0, .4)
-  $highlight-gutter = {
-    color: alpha($highlight-foreground, .5),
-    bg-color: $highlight-background
-  }
-  $highlight-tools = {
-    color: alpha($highlight-foreground, .8),
-    bg-color: darken($highlight-background, 2)
-  }
+  $highlight-gutter-color = alpha($highlight-foreground, .5)
+  $highlight-gutter-bgColor = $highlight-background
+  $highlight-tools-color = alpha($highlight-foreground, .8)
+  $highlight-tools-bgColor = darken($highlight-background, 2)
   $highlight-scrollbar = lighten($highlight-background, 8)
 
   if $highlight_enable
@@ -30,14 +36,10 @@ if $highlight_theme == 'pale night'
   $highlight-selection = #717CB450
   $highlight-foreground = #A6ACCD
   $highlight-mac-border = rgba($highlight-background, .4)
-  $highlight-gutter = {
-    color: alpha($highlight-foreground, .5),
-    bg-color: $highlight-background
-  }
-  $highlight-tools = {
-    color: $highlight-foreground,
-    bg-color: darken($highlight-background, 2)
-  }
+  $highlight-gutter-color = alpha($highlight-foreground, .5)
+  $highlight-gutter-bgColor = $highlight-background
+  $highlight-tools-color = $highlight-foreground
+  $highlight-tools-bgColor = darken($highlight-background, 2)
   $highlight-scrollbar = lighten($highlight-background, 8)
 
   if $highlight_enable
@@ -57,14 +59,10 @@ if $highlight_theme == 'ocean'
   $highlight-selection = #717CB450
   $highlight-foreground = #8F93A2
   $highlight-mac-border = rgba($highlight-background, .4)
-  $highlight-gutter = {
-    color: alpha($highlight-foreground, .5),
-    bg-color: $highlight-background
-  }
-  $highlight-tools = {
-    color: $highlight-foreground,
-    bg-color: darken($highlight-background, 2)
-  }
+  $highlight-gutter-color = alpha($highlight-foreground, .5)
+  $highlight-gutter-bgColor = $highlight-background
+  $highlight-tools-color = $highlight-foreground
+  $highlight-tools-bgColor = darken($highlight-background, 2)
   $highlight-scrollbar = lighten($highlight-background, 8)
 
   if $highlight_enable
@@ -84,14 +82,10 @@ if $highlight_theme == 'light'
   $highlight-selection = #80CBC440
   $highlight-foreground = #90A4AE
   $highlight-mac-border = rgba(144, 164, 174, .4)
-  $highlight-tools = {
-    color: $highlight-foreground,
-    bg-color: darken($highlight-background, 5)
-  }
-  $highlight-gutter = {
-    color: alpha($highlight-foreground, .5),
-    bg-color: $highlight-background
-  }
+  $highlight-tools-color = $highlight-foreground
+  $highlight-tools-bgColor = darken($highlight-background, 5)
+  $highlight-gutter-color = alpha($highlight-foreground, .5)
+  $highlight-gutter-bgColor = $highlight-background
   $highlight-scrollbar = darken($highlight-background, 8)
 
   if $highlight_enable
@@ -105,17 +99,3 @@ if $highlight_theme == 'light'
     $highlight-purple = #7C4DFF
     $highlight-deletion = #BF42BF
     $highlight-addition = #105EDE
-
-if $highlight_theme == false
-  $highlight-background = #F6F8FA
-  $highlight-foreground = #90A4AE
-  $highlight-selection = #80CBC440
-  $highlight-gutter = {
-    color: alpha($highlight-foreground, .5),
-    bg-color: $highlight-background
-  }
-  $highlight-tools = {
-    color: $highlight-foreground,
-    bg-color: darken($highlight-background, 5)
-  }
-  $highlight-scrollbar = darken($highlight-background, 8)

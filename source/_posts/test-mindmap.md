@@ -2,8 +2,7 @@
 title: 思维导图测试
 date: 2024-01-15 10:00:00
 tags:
-  - 思维导图
-  - Markdown
+  - 知识管理
 categories:
   - 工具
 ---

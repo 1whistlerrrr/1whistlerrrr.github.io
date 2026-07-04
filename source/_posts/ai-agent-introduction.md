@@ -4,7 +4,6 @@ date: 2024-07-01 10:00:00
 tags:
   - AI Agent
   - LangChain
-  - Python
   - 自动化
 categories:
   - AI Agent
