@@ -1,0 +1,118 @@
+$color1 = #D9F9DF
+$color2 = #AEE2FF
+$color3 = #B5BAFF
+$color4 = #9FA1FF
+
+body
+  background: linear-gradient(135deg, #f0fdf4 0%, #f0f9ff 50%, #f5f3ff 100%)
+
+#page-header
+  background: rgba(255, 255, 255, 0.95) !important
+  box-shadow: 0 2px 20px rgba($color4, 0.1)
+
+#site-title
+  color: #1e293b !important
+
+#subtitle
+  color: #64748b !important
+
+#site-subtitle
+  color: #64748b !important
+
+#content-inner
+  background: rgba(255, 255, 255, 0.8)
+  border-radius: 16px
+  box-shadow: 0 4px 30px rgba($color4, 0.08)
+
+#article-container
+  background: rgba(255, 255, 255, 0.9)
+  border-radius: 12px
+  padding: 30px
+  box-shadow: 0 2px 15px rgba($color4, 0.05)
+
+#article-container h1,
+#article-container h2,
+#article-container h3,
+#article-container h4,
+#article-container h5,
+#article-container h6
+  color: #1e293b
+  border-bottom: 2px solid $color3
+
+#article-container p
+  color: #475569
+
+#article-container a
+  color: $color4
+  border-bottom: 1px solid $color3
+  &:hover
+    color: darken($color4, 10%)
+    border-bottom-color: $color4
+
+.card
+  background: rgba(255, 255, 255, 0.9) !important
+  border-radius: 12px
+  box-shadow: 0 2px 15px rgba($color4, 0.08)
+
+.card-info
+  color: #64748b
+
+.card-title
+  color: #1e293b
+
+.card-content
+  color: #475569
+
+.sidebar
+  background: rgba(255, 255, 255, 0.9) !important
+  border-radius: 12px
+  box-shadow: 0 4px 20px rgba($color4, 0.1)
+
+.aside-content
+  color: #475569
+
+.page-category-list a,
+.page-tag-list a
+  background: $color1
+  color: #059669
+  border-radius: 20px
+  padding: 4px 12px
+  &:hover
+    background: darken($color1, 10%)
+    color: #047857
+
+.category-list a,
+.tag-list a
+  background: $color2
+  color: #0284c7
+  border-radius: 20px
+  padding: 4px 12px
+  &:hover
+    background: darken($color2, 10%)
+    color: #0369a1
+
+.post-copyright
+  background: $color1
+  border-left: 4px solid $color4
+
+figure.highlight
+  background: rgba(0, 0, 0, 0.02) !important
+  border-radius: 8px
+
+.hljs
+  background: transparent !important
+
+::-webkit-scrollbar
+  width: 8px
+
+::-webkit-scrollbar-track
+  background: $color2
+
+::-webkit-scrollbar-thumb
+  background: $color4
+  border-radius: 4px
+  &:hover
+    background: darken($color4, 10%)
+
+.footer-inner
+  color: #64748b

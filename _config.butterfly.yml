@@ -31,7 +31,7 @@ favicon: /img/favicon.ico
 
 avatar:
   img: img/LCY_screen.png
-  # effect: true
+  effect: false
 
 index_img: img/LCY_screen.png
 
@@ -105,4 +105,4 @@ darkmode:
 
 theme_color:
   enable: true
-  main: "#667eea"
+  main: "#9FA1FF"
