@@ -30,7 +30,7 @@ social:
 favicon: /img/favicon.ico
 
 avatar:
-  img: https://api.dicebear.com/7.x/avataaars/svg?seed=LiuChuyao
+  img:  /img/LCY-screen.png
   effect: true
 
 index_img:
