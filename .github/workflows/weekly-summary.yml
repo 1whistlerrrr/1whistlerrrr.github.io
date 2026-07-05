@@ -1,0 +1,72 @@
+name: Weekly Summary
+
+on:
+  schedule:
+    - cron: '0 12 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run weekly summary script
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_API_BASE: ${{ secrets.AI_API_BASE }}
+          AI_MODEL: ${{ secrets.AI_MODEL || 'gpt-4o-mini' }}
+        run: node scripts/weekly-summary.js
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update knowledge graphs"
+          title: "Weekly Knowledge Graph Update"
+          body: |
+            ## Summary
+            Automated weekly update of knowledge graphs based on recent blog posts.
+            
+            **Changes:**
+            - Updated markmap sections in knowledge files
+            - Updated related posts sections
+            
+            **Trigger:**
+            - Weekly scheduled run (Sunday 12:00 UTC)
+            
+            **AI Analysis:**
+            - Used ${{ env.AI_MODEL || 'gpt-4o-mini' }} to analyze recent posts
+            - Updated markmap content based on new article topics
+          branch: auto/weekly-summary
+          base: main
+          labels: |
+            automated
+            knowledge-graph

@@ -10,146 +10,41 @@ type: "knowledge"
 
 ---
 
-## 🧠 AI Agent（核心方向）
+## 📁 知识分类
+
+| 分类 | 描述 | 文章数 |
+|------|------|--------|
+| [🧠 AI Agent](/knowledge/ai-agent/) | 智能代理核心技术与应用 | 2 |
+| [☕ Java](/knowledge/java/) | Java技术栈与微服务架构 | 0 |
+| [🐍 Python](/knowledge/python/) | Python技术栈与AI开发 | 0 |
+| [🔄 自动化](/knowledge/automation/) | 自动化工具流与CI/CD | 0 |
+| [☁️ 云原生](/knowledge/cloud/) | 容器化与云服务技术 | 0 |
+
+---
+
+## 📊 学习路径
 
 {% markmap %}
-# AI Agent
-## 基础概念
-- 智能代理定义
-- Agent 架构模式
-- 感知-决策-行动循环
-- 记忆与学习
-## 核心技术
-- 大语言模型
-  - GPT
-  - LLaMA
-  - Qwen
-  - Claude
-- 框架与工具
-  - LangChain
-  - LangGraph
-  - AutoGPT
-  - CrewAI
-- 向量数据库
-  - Pinecone
-  - Milvus
-  - Chroma
-  - FAISS
-## 应用场景
-- 自动化办公
-- 代码生成与调试
-- 数据分析与报告
-- 智能客服
-## Multi-Agent
-- Agent 协作模式
-- 任务拆分与分配
-- 通信与协调
-- 群体智能
+# 学习路径
+## AI Agent 方向
+- 基础概念
+- 框架学习
+- 实践项目
+- Multi-Agent
+## 全栈开发
+- 前端技术
+- 后端技术
+- 数据库
+- 部署运维
+## 架构设计
+- 系统设计
+- 微服务
+- 云原生
+- 性能优化
 {% endmarkmap %}
 
 ---
 
-## ☕ Java 技术栈
+## 📈 近期更新
 
-{% markmap %}
-# Java 技术栈
-## 基础
-- Java 8/11/21
-- JVM 原理
-- 设计模式
-- 并发编程
-## 框架
-- Spring Boot
-- Spring Cloud
-- MyBatis
-- Hibernate
-## 微服务
-- 服务发现
-- 负载均衡
-- 熔断降级
-- 分布式事务
-## 性能优化
-- JVM 调优
-- 数据库优化
-- 缓存策略
-- 异步处理
-{% endmarkmap %}
-
----
-
-## 🐍 Python 技术栈
-
-{% markmap %}
-# Python 技术栈
-## 基础
-- Python 3.x
-- 异步编程
-- 类型注解
-- 包管理
-## AI/ML
-- 机器学习
-- 深度学习
-- 自然语言处理
-- 计算机视觉
-## 框架
-- FastAPI
-- Django
-- Flask
-- Streamlit
-## 自动化
-- 脚本开发
-- Web 爬虫
-- 数据处理
-- 任务调度
-{% endmarkmap %}
-
----
-
-## 🔄 自动化工具流
-
-{% markmap %}
-# 自动化工具流
-## 工作流设计
-- 流程建模
-- 状态管理
-- 条件分支
-- 异常处理
-## CI/CD
-- GitHub Actions
-- GitLab CI
-- Jenkins
-- Argo CD
-## 自动化工具
-- Shell Script
-- Python Automation
-- Ansible
-- Terraform
-## 监控告警
-- Prometheus
-- Grafana
-- ELK Stack
-- Alertmanager
-{% endmarkmap %}
-
----
-
-## ☁️ 云原生
-
-{% markmap %}
-# 云原生
-## 容器化
-- Docker
-- Kubernetes
-- Pod 设计
-- Service 发现
-## Serverless
-- Lambda
-- FaaS
-- API Gateway
-- Event Driven
-## 云服务
-- AWS
-- 阿里云
-- 腾讯云
-- 华为云
-{% endmarkmap %}
+> 每周自动更新：GitHub Actions 会在每周日自动分析本周新增内容，更新各知识图谱。
