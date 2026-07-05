@@ -45,5 +45,6 @@ type: "knowledge"
 
 ## 📚 相关文章
 
+- [ai-agent-introduction](/2026/07/01/ai-agent-introduction/)
+- [AI Agent 记忆机制详解](/2026/07/04/2026-07-04-ai-agent/)
 - [AI Agent 入门指南](/2026/07/04/2026-07-04-ai-agent-introduction/)
-- [AI Agent 核心概念](/2026/07/04/2026-07-04-ai-agent/)

@@ -14,7 +14,7 @@ type: "knowledge"
 
 | 分类 | 描述 | 文章数 |
 |------|------|--------|
-| [🧠 AI Agent](/knowledge/ai-agent/) | 智能代理核心技术与应用 | 2 |
+| [🧠 AI Agent](/knowledge/ai-agent/) | 智能代理核心技术与应用 | 3 |
 | [☕ Java](/knowledge/java/) | Java技术栈与微服务架构 | 0 |
 | [🐍 Python](/knowledge/python/) | Python技术栈与AI开发 | 0 |
 | [🔄 自动化](/knowledge/automation/) | 自动化工具流与CI/CD | 0 |

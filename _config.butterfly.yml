@@ -63,7 +63,7 @@ aside:
     category: true
   card_author:
     enable: true
-    description: AI Agent & 自动化工具探索者
+    description: AI 与 自动化工具 探索 
     button:
       enable: true
 
