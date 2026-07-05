@@ -30,10 +30,10 @@ social:
 favicon: /img/favicon.ico
 
 avatar:
-  img:  /img/LCY-screen.png
-  effect: true
+  img: img/LCY_screen.png
+  # effect: true
 
-index_img:
+index_img: img/LCY_screen.png
 
 index_layout: 4
 
@@ -63,11 +63,7 @@ aside:
     category: true
   card_author:
     enable: true
-<<<<<<< HEAD
-    description: AI 与 自动化工具 探索 
-=======
-    description: AI 
->>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
+    description: AI Agent & 自动化工具 探索 
     button:
       enable: true
 
