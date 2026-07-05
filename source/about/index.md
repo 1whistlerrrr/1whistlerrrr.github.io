@@ -8,7 +8,7 @@ type: "about"
 
 大家好，我是 **Liu Chuyao**，一名专注于 **AI Agent** 和 **自动化工具** 的开发者。
 
-我热爱探索如何用技术让工作更高效，尤其热衷于构建智能自动化工具流。我的核心信念是：**让机器做重复的事，让人做创造性的事**。
+**让机器做重复的事，让人做创造性的事**。
 
 ***
 
@@ -62,7 +62,11 @@ type: "about"
 
 ## 🎯 个人理念
 
+<<<<<<< HEAD
 > "自动化不是为了取代人，而是让生活回归生活本身"
+=======
+> "自动化不是为了取代人，而是让生活回归生活本身。"
+>>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
 
 我相信：
 
@@ -75,6 +79,7 @@ type: "about"
 ## 📚 学习路径
 
 {% timeline %}
+<<<<<<< HEAD
 
 - 2020: 开始学习编程，掌握 Java 和 Python 基础
 - 2021: 深入学习后端开发，构建企业级系统
@@ -82,6 +87,12 @@ type: "about"
 - 2023: 专注 AI Agent 技术，构建智能代理系统
 - 2024: 持续深耕 AI Agent + 自动化工具流领域
   {% endtimeline %}
+=======
+- 2024: 软件工程初步学习
+- 2025: 后端学习 Java ，深度神经网络构建
+- 2026: 专注 AI Agent 技术 + 自动化工具流领域
+{% endtimeline %}
+>>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
 
 ***
 
@@ -90,11 +101,16 @@ type: "about"
 - 📧 **Email**: <liuchuyaoyx@163.com>
 - 💻 **GitHub**: <https://github.com/1whistlerrrr>
 
+<<<<<<< HEAD
 ***
+=======
+>>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
 
-## 🔗 友情链接
 
+<<<<<<< HEAD
 - [Hexo](https://hexo.io/)
 - [Butterfly Theme](https://github.com/jerryc127/hexo-theme-butterfly)
 - [LangChain](https://python.langchain.com/)
+=======
+>>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
 

@@ -30,7 +30,7 @@ social:
 favicon: /img/favicon.ico
 
 avatar:
-  img: https://api.dicebear.com/7.x/avataaars/svg?seed=LiuChuyao
+  img:  /img/LCY-screen.png
   effect: true
 
 index_img:
@@ -63,7 +63,11 @@ aside:
     category: true
   card_author:
     enable: true
+<<<<<<< HEAD
     description: AI 与 自动化工具 探索 
+=======
+    description: AI 
+>>>>>>> c4995aeea010928adc50086ce53b43bb664e5876
     button:
       enable: true
 
