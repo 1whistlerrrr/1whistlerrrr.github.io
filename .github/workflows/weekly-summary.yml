@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '0 12 * * 0'
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -54,6 +51,13 @@ jobs:
           git add -A
           git commit -m "chore: update knowledge graphs"
           git push origin main
+
+      - name: Trigger Pages deployment
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run pages.yml --ref main
 
       - name: No changes to commit
         if: steps.changes.outputs.has_changes == 'false'
