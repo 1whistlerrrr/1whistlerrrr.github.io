@@ -34,4 +34,4 @@ type: "knowledge"
 
 ## 📚 相关文章
 
-- [test](/2026/07/08/test/)
+- [test](/2026/07/12/test/)
