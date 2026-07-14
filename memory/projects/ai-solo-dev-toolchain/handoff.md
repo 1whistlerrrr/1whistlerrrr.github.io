@@ -1,5 +1,7 @@
-# HANDOFF —— AI Solo 开发者工具链调研 —— 2026-07-13
+# HANDOFF —— AI Solo 开发者工具链调研
 
+> **归属**：研究线程 · AI Solo 开发者工具链
+> **状态**：🟡 基本完成（博客已发布，剩余为可选工具配置）· 最后更新 2026-07-13
 > **目标读者：新 Claude Code 会话。** 读完并在 2 分钟内理解：我们在做什么、做到了哪、下一步是什么。
 
 ---
@@ -82,7 +84,7 @@
 
 | 文件/目录 | 路径 |
 |----------|------|
-| 本 HANDOFF | `/Users/liuchuyao/Downloads/Github/1whilstlerrrrr/1whistlerrrr.github.io/source/_posts/HANDOFF.md` |
+| 本 HANDOFF | `/Users/liuchuyao/Downloads/Github/1whilstlerrrrr/1whistlerrrr.github.io/memory/projects/ai-solo-dev-toolchain/handoff.md` |
 | 博客总结 | `/Users/liuchuyao/Downloads/Github/1whilstlerrrrr/1whistlerrrr.github.io/source/_posts/2026-07-13-ai-solo-developer-toolchain-research.md` |
 | 调研数据目录 | `/Users/liuchuyao/Documents/Last30Days/` |
 | last30days SKILL.md | `~/.claude/plugins/cache/last30days-skill/last30days/3.13.0/skills/last30days/SKILL.md` |
@@ -97,4 +99,4 @@
 
 告诉 Claude：
 
-> "先读 `/Users/liuchuyao/Downloads/Github/1whilstlerrrrr/1whistlerrrr.github.io/source/_posts/HANDOFF.md` 了解上下文。我们在做 AI solo 开发者工具链的调研。读完告诉我你理解的现状和推荐下一步。"
+> "先读 `/Users/liuchuyao/Downloads/Github/1whilstlerrrrr/1whistlerrrr.github.io/memory/projects/ai-solo-dev-toolchain/handoff.md` 了解上下文。我们在做 AI solo 开发者工具链的调研。读完告诉我你理解的现状和推荐下一步。"
