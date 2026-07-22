@@ -637,7 +637,7 @@ def write_markdown(output_file, tool_name, session_file, turns, user_only=False)
             user_text = t['user']
             if len(user_text) > 3000:
                 user_text = user_text[:500] + f"\n\n…[截短：原始 {len(t['user'])} 字符]\n"
-            f.write(f"## 第 {t['num']} 轮\n\n")
+            f.write(f"# 第 {t['num']} 轮\n\n")
             f.write(f"**👤 提问**\n\n{user_text}\n\n")
             if not user_only:
                 f.write(f"**🤖 回答**\n\n{t['assistant']}\n\n")

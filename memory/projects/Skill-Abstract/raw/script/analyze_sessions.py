@@ -13,6 +13,7 @@
 import json, os, sys, re, argparse
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
+import math
 
 # ── 导入 extract_qa 的提取逻辑 ──
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +95,19 @@ CODE_NOISE = {
     # 过于通用的英文词（在技术语境中无区分度）
     'date', 'count', 'name', 'type', 'id', 'value', 'key', 'index',
     'item', 'data', 'info', 'result', 'list', 'file', 'files', 'path',
+    # 系统消息/Cron/通知相关噪音
+    'notification', 'fires', 'stops', 'live', 'background', 'children',
+    'resume', 'notify', 'callback', 'contextcallback', 'send', 'another',
+    'finished', 'accept', 'text', 'plain', 'microsoft', 'extensions',
+    'message', 'event',
+    # 过于通用的代码实体/参数
+    'page', 'pagesize', 'pages', 'dal', 'datacenter', 'setresult',
+    'masstransit', 'core', 'loc', 'locations', 'segmentstart',
+    'validlocations', 'helmeteventtypes',
+    # C# / 堆栈跟踪碎片
+    'temp', 'readonly', 'box', 'boolean', 'call', 'completed',
+    'runinternal', 'line', 'content', 'kestrel', 'aspnetcore',
+    'hatevents', 'segments', 'tolist', 'hl',
 }
 
 EN_STOP = {
@@ -143,6 +157,103 @@ def clean_text(text):
     return text.strip()
 
 
+def extract_text_from_md(filepath):
+    """
+    从 Markdown 文件中提取纯文本。
+    自动处理 YAML frontmatter、代码块、链接、图片等。
+    返回清洗后的文本字符串。
+    """
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # 1. 去 YAML frontmatter (--- ... ---)
+    content = re.sub(r'^---\s*\n.*?\n---\s*\n', '', content, flags=re.DOTALL)
+
+    # 2. 去代码块
+    content = re.sub(r'```[^`]*```', ' ', content, flags=re.DOTALL)
+
+    # 3. 去行内代码
+    content = re.sub(r'`[^`]+`', ' ', content)
+
+    # 4. 去图片 ![alt](url)
+    content = re.sub(r'!\[.*?\]\(.*?\)', ' ', content)
+
+    # 5. 链接 [text](url) → 保留 text
+    content = re.sub(r'\[([^\]]*?)\]\(.*?\)', r'\1', content)
+
+    # 6. 去 HTML 标签
+    content = re.sub(r'<[^>]+>', ' ', content)
+
+    # 7. 去 Markdown 格式标记（粗体、斜体、列表符号）
+    content = re.sub(r'\*\*(.*?)\*\*', r'\1', content)
+    content = re.sub(r'\*(.*?)\*', r'\1', content)
+    content = re.sub(r'^[-*+]\s+', '', content, flags=re.MULTILINE)
+    content = re.sub(r'^#{1,6}\s+', '', content, flags=re.MULTILINE)
+
+    # 8. 去水平分割线
+    content = re.sub(r'^[-*_]{3,}\s*$', '', content, flags=re.MULTILINE)
+
+    # 9. 去 URL
+    content = re.sub(r'https?://\S+', ' ', content)
+
+    # 10. 去表格（保留为纯文本——表格行去掉 | 和 --- 分隔符）
+    content = re.sub(r'\|', ' ', content)
+    content = re.sub(r'^[\s-]{3,}\s*$', '', content, flags=re.MULTILINE)
+
+    # 11. 合并空白
+    content = re.sub(r'\n{3,}', '\n\n', content)
+    content = re.sub(r'[ \t]+', ' ', content)
+
+    # 12. 拆分段落，过滤太短的
+    paragraphs = [p.strip() for p in content.split('\n\n') if len(p.strip()) > 15]
+
+    result = ' '.join(paragraphs)
+
+    # 最后过一遍通用清洗
+    result = clean_text(result)
+
+    return result
+
+
+def analyze_file(filepath, args):
+    """
+    分析单个 Markdown 文件。
+    返回 (all_tokens, session_tokens, session_texts, session_topics)
+    与 build_corpus 输出格式兼容。
+    """
+    text = extract_text_from_md(filepath)
+    if not text or len(text) < 50:
+        print("❌ 文件内容不足（少于 50 字符有效文本）")
+        return None, None, None, None
+
+    tokens = tokenize(text)
+    if not tokens:
+        print("❌ 未能提取到有效词汇")
+        return None, None, None, None
+
+    # 按标题或段落切分为多个"伪会话"，用于聚类分析
+    # 简单方案：按 \n\n 分段，每段作为独立单元
+    paragraphs = [p.strip() for p in text.split('\n\n') if len(p.strip()) > 50]
+    if len(paragraphs) < 2:
+        paragraphs = [text]  # 只有一段就用全文
+
+    session_tokens_list = []
+    session_texts_list = []
+
+    for para in paragraphs:
+        para_tokens = tokenize(para)
+        if para_tokens and len(para_tokens) >= 5:
+            session_tokens_list.append(('file', filepath, para_tokens))
+            session_texts_list.append(('file', filepath, [para]))
+
+    if not session_tokens_list:
+        # fallback: 全文作为一个会话
+        session_tokens_list = [('file', filepath, tokens)]
+        session_texts_list = [('file', filepath, [text])]
+
+    return tokens, session_tokens_list, session_texts_list
+
+
 def is_noise_token(word):
     """过滤噪音 token：Markdown 标记、代码片段、堆栈跟踪、随机 ID"""
     # 纯标点 / 符号
@@ -171,6 +282,34 @@ def is_noise_token(word):
         return True
     # 纯下划线/点号链
     if re.match(r'^[_.]+$', word):
+        return True
+    # 连续小写复合词（threadpoolthread, continuationobject 等堆栈碎片）
+    if len(word) > 12 and re.match(r'^[a-z]{12,}$', word):
+        return True
+    # Hash 碎片：纯 hex 字符 [a-f0-9]
+    # ≥8 位 → 几乎一定是 hash（SHA 片段）
+    if re.match(r'^[a-f0-9]{8,}$', word):
+        return True
+    # 3-7 位且含数字 → hash 片段（ead 等 3 字母真实单词放行）
+    if re.match(r'^[a-f0-9]{3,7}$', word) and re.search(r'[0-9]', word):
+        return True
+    return False
+
+
+def is_noise_phrase(phrase):
+    """短语级噪音过滤：代码碎片、纯系统消息、无实质内容"""
+    parts = phrase.split()
+    # 所有词都在 CODE_NOISE 中 → 噪音
+    if all(p in CODE_NOISE for p in parts):
+        return True
+    # 大部分词是噪音 token
+    noise_count = sum(1 for p in parts if is_noise_token(p))
+    if noise_count > len(parts) * 0.5:
+        return True
+    # 短语看起来像代码行后缀（XxxThread, XxxCallback, XxxHandler...）
+    phrase_str = ' '.join(parts)
+    code_suffixes = r'(thread|callback|handler|builder|factory|provider|manager|service|controller|repository|token|notification|message|event|context|object)$'
+    if re.match(rf'^[a-z]+\s+[a-z]+{code_suffixes}', phrase_str):
         return True
     return False
 
@@ -237,6 +376,176 @@ def is_meaningful_phrase(phrase):
                      if p not in CN_STOP and p not in EN_STOP and p not in CODE_NOISE
                      and not is_noise_token(p))
     return meaningful >= len(parts) * 0.5
+
+
+# ── POS 模式定义（好搭配的词性组合） ──
+
+# 中文好模式：两个有实质内容的词相邻
+GOOD_POS_PATTERNS_2 = {
+    ('n', 'n'), ('n', 'v'), ('v', 'n'), ('a', 'n'), ('n', 'a'),
+    ('vn', 'n'), ('n', 'vn'), ('an', 'n'), ('n', 'an'),
+    ('v', 'v'), ('vn', 'v'), ('v', 'vn'),
+    ('ns', 'n'), ('n', 'ns'), ('nr', 'n'), ('n', 'nr'),
+    ('eng', 'n'), ('n', 'eng'), ('eng', 'v'), ('v', 'eng'),
+    ('eng', 'eng'), ('eng', 'a'), ('a', 'eng'),
+    ('nz', 'n'), ('n', 'nz'), ('j', 'n'), ('n', 'j'),
+    # 允许一个虚词在中间（如"API 的 调用"→ 已过滤，这里不做）
+}
+
+# 坏 POS 模式：两个虚词/代词/标点相邻 → 降权
+BAD_POS_PATTERNS_2 = {
+    ('uj', 'n'), ('n', 'uj'), ('ul', 'v'), ('v', 'ul'),
+    ('p', 'n'), ('n', 'p'), ('p', 'v'), ('v', 'p'),
+    ('r', 'n'), ('n', 'r'), ('r', 'v'), ('v', 'r'),
+    ('d', 'n'), ('n', 'd'), ('d', 'v'), ('v', 'd'),
+    ('m', 'n'), ('q', 'n'), ('m', 'v'),
+    ('c', 'n'), ('n', 'c'), ('c', 'v'), ('v', 'c'),
+    ('x', 'n'), ('n', 'x'), ('x', 'x'),
+}
+
+
+def score_phrase_pos(phrase):
+    """
+    用 jieba POS 对短语做词性模式评分。
+    返回 1.0（完美名动搭配）~ 0.0（纯虚词噪音）
+    """
+    if not JIEBA_OK:
+        return 0.5  # 没有 jieba 时中性评分
+
+    words = list(pseg.cut(phrase))
+    poses = [w.flag for w in words if w.flag not in ('x', 'w', 'm', 'q')]
+
+    if len(poses) < 2:
+        return 0.3
+
+    if len(poses) == 2:
+        if tuple(poses) in GOOD_POS_PATTERNS_2:
+            return 1.0
+        if tuple(poses) in BAD_POS_PATTERNS_2:
+            return 0.1
+        # 任意 n-开头的词 + n-开头的词
+        if poses[0].startswith('n') and poses[1].startswith('n'):
+            return 0.85
+        if poses[0].startswith('v') and poses[1].startswith('n'):
+            return 0.85
+        if poses[0].startswith('n') and poses[1].startswith('v'):
+            return 0.8
+        return 0.35
+
+    else:
+        # trigram: 滑动窗口取平均
+        scores = []
+        for i in range(len(poses) - 1):
+            pair = (poses[i], poses[i + 1])
+            if pair in GOOD_POS_PATTERNS_2:
+                scores.append(1.0)
+            elif pair in BAD_POS_PATTERNS_2:
+                scores.append(0.1)
+            elif pair[0].startswith('n') and pair[1].startswith('n'):
+                scores.append(0.8)
+            elif pair[0].startswith('v') and pair[1].startswith('n'):
+                scores.append(0.8)
+            else:
+                scores.append(0.3)
+        return sum(scores) / len(scores) if scores else 0.3
+
+
+def analyze_phrases_pmi(all_tokens, top_n=20, min_freq=3):
+    """
+    基于 PMI + POS 模式 + 频率的综合短语评分。
+
+    PMI(w1,w2) = log(P(w1,w2) / (P(w1) * P(w2)))
+    高 PMI → 两个词"真正绑在一起"，而非偶然相邻。
+
+    Combined = PMI × log(freq) × POS_bonus
+    """
+    word_counts = Counter(all_tokens)
+    N_words = len(all_tokens)
+
+    # ── Bigram PMI ──
+    bigrams_raw = extract_bigrams(all_tokens)
+    bigram_counter = Counter(
+        b for b in bigrams_raw
+        if is_meaningful_phrase(b) and not is_noise_phrase(b)
+    )
+    total_bigrams = sum(bigram_counter.values())
+
+    scored_bigrams = []
+    for phrase, freq in bigram_counter.items():
+        if freq < min_freq:
+            continue
+        parts = phrase.split()
+        if len(parts) != 2:
+            continue
+
+        # PMI
+        p_w1 = word_counts.get(parts[0], 1) / N_words
+        p_w2 = word_counts.get(parts[1], 1) / N_words
+        p_joint = freq / max(total_bigrams, 1)
+        if p_w1 > 0 and p_w2 > 0 and p_joint > 0:
+            pmi = math.log(p_joint / (p_w1 * p_w2))
+        else:
+            pmi = 0.0
+
+        # POS 加成
+        pos_score = score_phrase_pos(phrase)
+
+        # 综合分（至少保留基础分）
+        combined = max(0.01, pmi) * math.log(freq + 1) * (0.25 + 0.75 * pos_score)
+
+        scored_bigrams.append((phrase, freq, round(pmi, 2), round(combined, 3)))
+
+    scored_bigrams.sort(key=lambda x: x[3], reverse=True)
+
+    # ── Trigram（用平均 pairwise PMI + POS）──
+    trigrams_raw = extract_trigrams(all_tokens)
+    trigram_counter = Counter(
+        t for t in trigrams_raw
+        if is_meaningful_phrase(t) and not is_noise_phrase(t)
+    )
+    total_trigrams = sum(trigram_counter.values())
+
+    scored_trigrams = []
+    for phrase, freq in trigram_counter.items():
+        if freq < min_freq:
+            continue
+        parts = phrase.split()
+        if len(parts) != 3:
+            continue
+
+        # 平均 pairwise PMI
+        pmi_sum = 0.0
+        pairs_ok = 0
+        for i in range(2):
+            w_a, w_b = parts[i], parts[i + 1]
+            p_wa = word_counts.get(w_a, 1) / N_words
+            p_wb = word_counts.get(w_b, 1) / N_words
+            # 用 bigram 计数估算 joint
+            pair_str = f'{w_a} {w_b}'
+            pair_freq = bigram_counter.get(pair_str, 1)
+            p_joint = pair_freq / max(total_bigrams, 1)
+            if p_wa > 0 and p_wb > 0 and p_joint > 0:
+                pmi_sum += math.log(p_joint / (p_wa * p_wb))
+                pairs_ok += 1
+
+        avg_pmi = pmi_sum / max(pairs_ok, 1)
+
+        pos_score = score_phrase_pos(phrase)
+        combined = max(0.01, avg_pmi) * math.log(freq + 1) * (0.25 + 0.75 * pos_score)
+
+        scored_trigrams.append((phrase, freq, round(avg_pmi, 2), round(combined, 3)))
+
+    scored_trigrams.sort(key=lambda x: x[3], reverse=True)
+
+    return scored_bigrams[:top_n], scored_trigrams[:top_n]
+
+
+# 兼容旧接口
+def analyze_phrases(all_tokens, top_n=20):
+    """兼容旧调用，内部使用 PMI"""
+    bis, tris = analyze_phrases_pmi(all_tokens, top_n=top_n, min_freq=2)
+    # 返回 (phrase, count) 格式兼容旧代码
+    return [(p, f) for p, f, _, _ in bis], [(p, f) for p, f, _, _ in tris]
 
 
 # ═══════════════════════════════════════════════════════════
@@ -502,17 +811,21 @@ def print_report(args, all_tokens, session_tokens, session_texts, session_topics
         bar = format_bar(c, max_count)
         print(f'{w:<20} {c:>6}  {bar}')
 
-    # ── 常见短语 ──
-    bigrams, trigrams = analyze_phrases(all_tokens, top_n=args.top // 2)
-    print_header(f'📝 常见短语')
+    # ── 常见短语（PMI 评分） ──
+    bigrams, trigrams = analyze_phrases_pmi(
+        all_tokens, top_n=args.top // 2, min_freq=args.min_phrase_freq
+    )
+    print_header(f'📝 常见短语（PMI 评分：越高越"真正绑定"）')
     if bigrams:
-        print('  2-gram:')
-        for phrase, count in bigrams[:args.top // 3]:
-            print(f'    {phrase:<40} ×{count}')
+        print(f'  {"2-gram":<35} {"频次":>5}  {"PMI":>6}  {"综合":>6}')
+        print('  ' + '─' * 58)
+        for phrase, freq, pmi, combined in bigrams[:args.top // 2]:
+            print(f'  {phrase:<35} {freq:>5}  {pmi:>6.2f}  {combined:>6.3f}')
     if trigrams:
-        print('  3-gram:')
-        for phrase, count in trigrams[:args.top // 3]:
-            print(f'    {phrase:<40} ×{count}')
+        print(f'\n  {"3-gram":<35} {"频次":>5}  {"PMI":>6}  {"综合":>6}')
+        print('  ' + '─' * 58)
+        for phrase, freq, pmi, combined in trigrams[:args.top // 3]:
+            print(f'  {phrase:<35} {freq:>5}  {pmi:>6.2f}  {combined:>6.3f}')
 
     # ── 主题聚类 ──
     clusters = cluster_sessions(session_tokens, min_shared=2)
@@ -582,7 +895,9 @@ def write_markdown_report(
     total_chars = sum(sum(len(t) for t in texts) for _, _, texts in session_texts)
     unique_words = len(set(all_tokens))
     word_freq = analyze_word_freq(all_tokens, top_n=args.top)
-    bigrams, trigrams = analyze_phrases(all_tokens, top_n=args.top // 2)
+    bigrams, trigrams = analyze_phrases_pmi(
+        all_tokens, top_n=args.top // 2, min_freq=args.min_phrase_freq
+    )
     clusters = cluster_sessions(session_tokens, min_shared=2)
 
     with open(out_file, 'w') as f:
@@ -605,20 +920,20 @@ def write_markdown_report(
             f.write(f'| {w} | {c} |\n')
         f.write(f'\n')
 
-        f.write(f'## 📝 常见短语\n\n')
+        f.write(f'## 📝 常见短语（PMI 评分）\n\n')
         if bigrams:
             f.write(f'### 2-gram\n\n')
-            f.write(f'| 短语 | 频次 |\n')
-            f.write(f'|------|------|\n')
-            for phrase, count in bigrams[:args.top // 2]:
-                f.write(f'| {phrase} | {count} |\n')
+            f.write(f'| 短语 | 频次 | PMI | 综合分 |\n')
+            f.write(f'|------|------|-----|--------|\n')
+            for phrase, freq, pmi, combined in bigrams[:args.top // 2]:
+                f.write(f'| {phrase} | {freq} | {pmi} | {combined} |\n')
             f.write(f'\n')
         if trigrams:
             f.write(f'### 3-gram\n\n')
-            f.write(f'| 短语 | 频次 |\n')
-            f.write(f'|------|------|\n')
-            for phrase, count in trigrams[:args.top // 2]:
-                f.write(f'| {phrase} | {count} |\n')
+            f.write(f'| 短语 | 频次 | PMI | 综合分 |\n')
+            f.write(f'|------|------|-----|--------|\n')
+            for phrase, freq, pmi, combined in trigrams[:args.top // 3]:
+                f.write(f'| {phrase} | {freq} | {pmi} | {combined} |\n')
             f.write(f'\n')
 
         f.write(f'## 📂 主题聚类 ({len(clusters)} 组)\n\n')
@@ -704,8 +1019,80 @@ def main():
     parser.add_argument('--recent', type=int, default=0,
                         help='仅分析最近 N 天的会话（0=全部，同时启用趋势对比）')
     parser.add_argument('--verbose', '-v', action='store_true', help='显示每个会话的关键词摘要')
+    parser.add_argument('--min-pmi', type=float, default=0.5,
+                        help='短语最低 PMI 阈值（默认 0.5，越高越严格）')
+    parser.add_argument('--min-phrase-freq', type=int, default=3,
+                        help='短语最低出现次数（默认 3）')
     parser.add_argument('-o', '--output', help='保存 Markdown 报告到文件')
+    parser.add_argument('--file', '-f', help='分析指定的 Markdown 文件（而非会话记录）')
     args = parser.parse_args()
+
+    # ── --file 模式：分析单个 Markdown 文件 ──
+    if args.file:
+        filepath = os.path.expanduser(args.file)
+        if not os.path.isfile(filepath):
+            print(f"❌ 文件不存在: {filepath}")
+            return
+
+        print(f"\n⏳ 正在分析: {filepath}")
+        all_tokens, session_tokens, session_texts = analyze_file(filepath, args)
+
+        if not all_tokens:
+            return
+
+        session_topics = analyze_session_topics(session_tokens)
+        word_freq = analyze_word_freq(all_tokens, top_n=args.top)
+        bigrams, trigrams = analyze_phrases_pmi(
+            all_tokens, top_n=args.top // 2, min_freq=args.min_phrase_freq
+        )
+
+        # 精简报告（无趋势、简化聚类）
+        unique_words = len(set(all_tokens))
+        total_paras = len(session_texts)
+
+        print()
+        print('╔' + '═' * 68 + '╗')
+        print(f'║  📄 文档分析: {os.path.basename(filepath)[:50]}')
+        print('╠' + '═' * 68 + '╣')
+        print(f'║  段落数: {total_paras:<6}  |  总字数: {len(" ".join(str(t) for t in all_tokens)):>8,}  ║')
+        print(f'║  独特词数: {unique_words:<6}  |  总词频: {len(all_tokens):>8,}                        ║')
+        print('╚' + '═' * 68 + '╝')
+
+        max_count = word_freq[0][1] if word_freq else 1
+        print_header(f'🔥 高频关键词 (Top {args.top})')
+        print(f'{"关键词":<20} {"频次":>6}  {"分布"}')
+        print('─' * 70)
+        for w, c in word_freq[:args.top]:
+            bar = format_bar(c, max_count)
+            print(f'{w:<20} {c:>6}  {bar}')
+
+        print_header(f'📝 常见短语（PMI 评分）')
+        if bigrams:
+            print(f'  {"2-gram":<35} {"频次":>5}  {"PMI":>6}  {"综合":>6}')
+            print('  ' + '─' * 58)
+            for phrase, freq, pmi, combined in bigrams[:args.top // 2]:
+                print(f'  {phrase:<35} {freq:>5}  {pmi:>6.2f}  {combined:>6.3f}')
+        if trigrams:
+            print(f'\n  {"3-gram":<35} {"频次":>5}  {"PMI":>6}  {"综合":>6}')
+            print('  ' + '─' * 58)
+            for phrase, freq, pmi, combined in trigrams[:args.top // 3]:
+                print(f'  {phrase:<35} {freq:>5}  {pmi:>6.2f}  {combined:>6.3f}')
+
+        # 聚类（段落间）
+        if len(session_tokens) >= 2:
+            clusters = cluster_sessions(session_tokens, min_shared=1)
+            print_header(f'📂 段落聚类 ({len(clusters)} 组)')
+            for ci, cluster in enumerate(clusters[:12]):
+                label = cluster_label(cluster, session_topics)
+                if len(cluster) >= 2:
+                    print(f'  🏷️  [{label}] — {len(cluster)} 个段落')
+
+        print()
+        print('─' * 70)
+        print('  💡 提示: 使用 -o report.md 保存完整报告')
+        print('─' * 70)
+        print()
+        return
 
     # ── 获取会话列表 ──
     all_sessions = scan_all_sessions()
