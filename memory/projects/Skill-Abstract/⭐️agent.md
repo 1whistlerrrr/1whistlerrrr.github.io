@@ -3,8 +3,20 @@ https://github.com/earendil-works/pi
 
 https://pi.dev/
 
+
+![alt text](image-1.png)
+
+
+1.探索cc的使用方法
+2./grill me的使用方法
+3.ai对话的梳理
+
+
 | 问题 ｜实践 <=> 论文/工程调研｜
 ai与人多轮对话（模型记忆） -> 从实践中吸取教训迭代更新（？）<=> ai-agent 自进化的论文与工程实践 <参考（codex、claude code）> 
+
+
+
 
 
 相关资料：
@@ -33,8 +45,10 @@ Agent训练：
 2.不同的错误得到经验如何分类
 3.个人
 
-下一步做什么：
-1.个人
+⭐️下一步做什么：
+1.个人pi从零开始的agent
+2.harness关于进化（自己迭代）插件
+3.总结trea主流模型对于进化的实现方式
 
 参考资料
 1.https://forum.trae.cn/t/topic/13529
