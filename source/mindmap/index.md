@@ -13,7 +13,6 @@ type: "mindmap"
 ## 📁 导图列表
 
 {% mindmap_list %}
-{% endmindmap_list %}
 
 ---
 
