@@ -152,11 +152,124 @@ type: "mindmap"
 ---"""
 
 
+TOGGLE_CSS = """\
+<style>
+.mindmap-view-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.mindmap-toggle-btn {
+  padding: 8px 22px;
+  border: 2px solid #49b1f5;
+  background: transparent;
+  color: #49b1f5;
+  border-radius: 22px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  outline: none;
+}
+.mindmap-toggle-btn:hover {
+  background: rgba(73, 177, 245, 0.1);
+  transform: translateY(-1px);
+}
+.mindmap-toggle-btn.active {
+  background: #49b1f5;
+  color: #fff;
+}
+.mindmap-tree-text {
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+  padding: 20px 24px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.9;
+  overflow-x: auto;
+  white-space: pre;
+  color: #24292e;
+}
+[data-theme="dark"] .mindmap-tree-text {
+  background: #1e1e2e;
+  border-color: #313244;
+  color: #cdd6f4;
+}
+[data-theme="dark"] .mindmap-toggle-btn {
+  border-color: #89b4fa;
+  color: #89b4fa;
+}
+[data-theme="dark"] .mindmap-toggle-btn:hover {
+  background: rgba(137, 180, 250, 0.15);
+}
+[data-theme="dark"] .mindmap-toggle-btn.active {
+  background: #89b4fa;
+  color: #1e1e2e;
+}
+</style>"""
+
+TOGGLE_JS = """\
+<script>
+(function() {
+  var currentView = 'mindmap';
+  window.switchMindmapView = function(view) {
+    if (currentView === view) return;
+    currentView = view;
+    var btns = document.querySelectorAll('.mindmap-toggle-btn');
+    btns.forEach(function(btn) { btn.classList.remove('active'); });
+    document.getElementById('mindmap-view').style.display = view === 'mindmap' ? 'block' : 'none';
+    document.getElementById('tree-view').style.display = view === 'tree' ? 'block' : 'none';
+    if (view === 'mindmap') {
+      btns[0].classList.add('active');
+      window.dispatchEvent(new Event('resize'));
+    } else {
+      btns[1].classList.add('active');
+    }
+  };
+})();
+</script>"""
+
+TOGGLE_HTML = """\
+<div class="mindmap-view-toggle">
+  <button class="mindmap-toggle-btn active" onclick="switchMindmapView('mindmap')">🧠 思维导图</button>
+  <button class="mindmap-toggle-btn" onclick="switchMindmapView('tree')">📝 原始文本</button>
+</div>
+
+<div id="mindmap-view" class="mindmap-view-content">
+{{% markmap %}}
+{markmap_body}
+{{% endmarkmap %}}
+</div>
+
+<div id="tree-view" class="mindmap-view-content" style="display:none;">
+<pre class="mindmap-tree-text">
+{tree_text}
+</pre>
+</div>
+"""
+
+
+def build_output(title: str, markmap_body: str, tree_text: str) -> str:
+    """构建包含双视图切换的完整页面内容。"""
+    # HTML 转义原始文本
+    tree_escaped = (
+        tree_text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .strip()
+    )
+    toggle_html = TOGGLE_HTML.format(markmap_body=markmap_body, tree_text=tree_escaped)
+    return f"""## {title}
+
+{TOGGLE_CSS}
+{toggle_html}
+{TOGGLE_JS}"""
+
+
 def convert_file(input_path: Path, output_path: Path) -> bool:
-    """
-    转换单个文件。
-    返回 True 表示成功转换，False 表示失败。
-    """
+    """转换单个文件。"""
     try:
         raw_text = input_path.read_text(encoding="utf-8")
     except Exception as e:
@@ -167,7 +280,7 @@ def convert_file(input_path: Path, output_path: Path) -> bool:
         print(f"  [SKIP] {input_path.name} 是空文件")
         return False
 
-    # 分离可能存在的自定义 frontmatter 和树形内容
+    # 分离自定义 frontmatter 和树形内容
     body = raw_text
     custom_title = None
     custom_date = None
@@ -190,18 +303,13 @@ def convert_file(input_path: Path, output_path: Path) -> bool:
         print(f"  [SKIP] {input_path.name} 未识别到有效树形内容")
         return False
 
-    # 标题优先级：自定义 frontmatter > 文件名
     title = custom_title or input_path.stem
-
-    # 生成输出
     frontmatter = generate_frontmatter(title, custom_date)
+    page_body = build_output(title, markmap_body, body)
+
     output_text = f"""{frontmatter}
 
-## {title}
-
-{{% markmap %}}
-{markmap_body}
-{{% endmarkmap %}}
+{page_body}
 """
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
