@@ -37,7 +37,7 @@ hexo.extend.tag.register('mindmap_list', function (args) {
     } catch (e) {
       // fallback to filename
     }
-    const url = mindmapBaseUrl + name + '/';
+    const url = mindmapBaseUrl + name + '.html';
     html += `  <li><a href="${url}">🧠 ${title}</a></li>\n`;
   }
   html += '</ul>';
