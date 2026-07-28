@@ -159,6 +159,7 @@ TOGGLE_CSS = """\
   gap: 10px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: center;
 }
 .mindmap-toggle-btn {
   padding: 8px 22px;
@@ -208,26 +209,216 @@ TOGGLE_CSS = """\
   background: #89b4fa;
   color: #1e1e2e;
 }
+/* ---- Editor ---- */
+.mindmap-editor-wrapper { display: none; margin-bottom: 16px; }
+.mindmap-editor-toolbar {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 0; padding: 8px 12px;
+  background: #f6f8fa; border: 1px solid #e1e4e8;
+  border-radius: 10px 10px 0 0; border-bottom: none;
+}
+.mindmap-editor-toolbar button {
+  padding: 4px 12px; border: 1px solid #d0d7de;
+  background: #fff; border-radius: 6px;
+  cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap;
+}
+.mindmap-editor-toolbar button:hover { background: #49b1f5; color: #fff; border-color: #49b1f5; }
+.mindmap-editor-textarea {
+  width: 100%; min-height: 400px; padding: 16px;
+  border: 1px solid #e1e4e8; border-radius: 0 0 10px 10px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 13px; line-height: 1.9; resize: vertical;
+  background: #fff; color: #24292e; outline: none;
+}
+.mindmap-editor-textarea:focus { border-color: #49b1f5; box-shadow: 0 0 0 3px rgba(73,177,245,0.15); }
+.mindmap-save-row { display: none; align-items: center; gap: 10px; margin-top: 12px; }
+.mindmap-save-btn {
+  padding: 10px 28px; border: none; background: #2da44e; color: #fff;
+  border-radius: 22px; cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: all 0.3s; outline: none;
+}
+.mindmap-save-btn:hover { background: #1a7f37; transform: translateY(-1px); }
+.mindmap-save-btn:disabled { background: #94d3a2; cursor: not-allowed; transform: none; }
+.mindmap-save-status { font-size: 13px; }
+.mindmap-save-status.success { color: #2da44e; }
+.mindmap-save-status.error { color: #cf222e; }
+.mindmap-token-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;
+}
+.mindmap-token-dialog {
+  background: #fff; border-radius: 12px; padding: 24px;
+  max-width: 440px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.mindmap-token-dialog h3 { margin: 0 0 12px; font-size: 16px; }
+.mindmap-token-dialog input {
+  width: 100%; padding: 10px 12px; border: 1px solid #d0d7de;
+  border-radius: 8px; font-size: 14px; margin-bottom: 8px; box-sizing: border-box;
+}
+.mindmap-token-dialog .hint { font-size: 12px; color: #656d76; margin-bottom: 16px; }
+.mindmap-token-dialog .hint a { color: #49b1f5; }
+.mindmap-token-dialog .actions { display: flex; gap: 8px; justify-content: flex-end; }
+.mindmap-token-dialog .actions button {
+  padding: 6px 16px; border-radius: 8px; border: 1px solid #d0d7de;
+  background: #fff; cursor: pointer; font-size: 13px;
+}
+.mindmap-token-dialog .actions .btn-primary { background: #49b1f5; color: #fff; border-color: #49b1f5; }
+[data-theme="dark"] .mindmap-editor-toolbar { background: #1e1e2e; border-color: #313244; }
+[data-theme="dark"] .mindmap-editor-toolbar button { background: #313244; border-color: #45475a; color: #cdd6f4; }
+[data-theme="dark"] .mindmap-editor-textarea { background: #1e1e2e; border-color: #313244; color: #cdd6f4; }
+[data-theme="dark"] .mindmap-token-dialog { background: #1e1e2e; color: #cdd6f4; }
+[data-theme="dark"] .mindmap-token-dialog input { background: #313244; border-color: #45475a; color: #cdd6f4; }
+[data-theme="dark"] .mindmap-token-dialog .actions button { background: #313244; border-color: #45475a; color: #cdd6f4; }
 </style>"""
 
 TOGGLE_JS = """\
 <script>
 (function() {
-  var currentView = 'mindmap';
+  var currentView = 'mindmap', isEditing = false;
+  var sourceFilename = '__SOURCE_FILENAME__';
+  var owner = '1whistlerrrr', repo = '1whistlerrrr.github.io';
+  var editHistory = [], historyIdx = -1;
+
   window.switchMindmapView = function(view) {
-    if (currentView === view) return;
-    currentView = view;
+    if (currentView === view && !isEditing) return;
+    if (isEditing) exitEditMode(true);
+    currentView = view; isEditing = false;
     var btns = document.querySelectorAll('.mindmap-toggle-btn');
-    btns.forEach(function(btn) { btn.classList.remove('active'); });
-    document.getElementById('mindmap-view').style.display = view === 'mindmap' ? 'block' : 'none';
-    document.getElementById('tree-view').style.display = view === 'tree' ? 'block' : 'none';
-    if (view === 'mindmap') {
-      btns[0].classList.add('active');
-      window.dispatchEvent(new Event('resize'));
-    } else {
-      btns[1].classList.add('active');
-    }
+    btns.forEach(function(b){b.classList.remove('active');});
+    document.getElementById('mindmap-view').style.display = view==='mindmap'?'block':'none';
+    document.getElementById('tree-view').style.display = view==='tree'?'block':'none';
+    document.getElementById('edit-view').style.display = 'none';
+    document.querySelector('.mindmap-editor-wrapper').style.display = 'none';
+    document.querySelector('.mindmap-save-row').style.display = 'none';
+    if(view==='mindmap'){btns[0].classList.add('active');window.dispatchEvent(new Event('resize'));}
+    else{btns[1].classList.add('active');}
+    document.getElementById('edit-btn').style.display='inline-flex';
+    document.getElementById('cancel-edit-btn').style.display='none';
   };
+
+  window.enterEditMode = function() {
+    isEditing = true;
+    var btns = document.querySelectorAll('.mindmap-toggle-btn');
+    btns.forEach(function(b){b.classList.remove('active');});
+    document.getElementById('mindmap-view').style.display='none';
+    document.getElementById('tree-view').style.display='none';
+    document.getElementById('edit-view').style.display='block';
+    document.querySelector('.mindmap-editor-wrapper').style.display='block';
+    document.querySelector('.mindmap-save-row').style.display='flex';
+    document.getElementById('edit-btn').style.display='none';
+    document.getElementById('cancel-edit-btn').style.display='inline-flex';
+    document.getElementById('cancel-edit-btn').classList.add('active');
+    document.getElementById('save-status').textContent='';
+    document.getElementById('save-status').className='mindmap-save-status';
+    var ta = document.getElementById('mindmap-textarea');
+    editHistory = [ta.value]; historyIdx = 0;
+    ta.focus();
+  };
+
+  window.exitEditMode = function(discard) {
+    if(!discard) return;
+    isEditing = false;
+    document.getElementById('edit-view').style.display='none';
+    document.querySelector('.mindmap-editor-wrapper').style.display='none';
+    document.querySelector('.mindmap-save-row').style.display='none';
+    document.getElementById('edit-btn').style.display='inline-flex';
+    document.getElementById('cancel-edit-btn').style.display='none';
+    document.getElementById('cancel-edit-btn').classList.remove('active');
+    document.getElementById('tree-view').style.display='block';
+    document.querySelectorAll('.mindmap-toggle-btn')[1].classList.add('active');
+    currentView = 'tree';
+  };
+
+  window.editorCmd = function(cmd) {
+    var ta=document.getElementById('mindmap-textarea');
+    var s=ta.selectionStart,e=ta.selectionEnd,t=ta.value,sel=t.substring(s,e);
+    var wL='',wR='';
+    switch(cmd){
+      case 'bold':wL='**';wR='**';break;
+      case 'strike':wL='~~';wR='~~';break;
+      case 'highlight':wL='==';wR='==';break;
+      case 'code':wL='`';wR='`';break;
+    }
+    if(!sel.length){
+      var ph={bold:'粗体',strike:'删除线',highlight:'高亮',code:'代码'}[cmd]||'';
+      ta.value=t.substring(0,s)+wL+ph+wR+t.substring(e);
+      ta.focus();ta.setSelectionRange(s+wL.length,s+wL.length+ph.length);
+    }else{
+      ta.value=t.substring(0,s)+wL+sel+wR+t.substring(e);
+      ta.focus();ta.setSelectionRange(s,e+wL.length+wR.length);
+    }
+    pushHistory();
+  };
+
+  function pushHistory(){
+    var ta=document.getElementById('mindmap-textarea');
+    editHistory=editHistory.slice(0,historyIdx+1);
+    editHistory.push(ta.value);historyIdx=editHistory.length-1;
+  }
+
+  window.editorUndo=function(){if(historyIdx>0){historyIdx--;document.getElementById('mindmap-textarea').value=editHistory[historyIdx];}};
+  window.editorRedo=function(){if(historyIdx<editHistory.length-1){historyIdx++;document.getElementById('mindmap-textarea').value=editHistory[historyIdx];}};
+
+  document.addEventListener('keydown',function(e){
+    if(!isEditing)return;
+    if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();editorUndo();}
+    if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();editorRedo();}
+  });
+  document.addEventListener('input',function(e){if(e.target.id==='mindmap-textarea'&&isEditing)pushHistory();});
+
+  function getToken(){try{return localStorage.getItem('gh_mindmap_token')||'';}catch(e){return '';}}
+  function setToken(t){try{localStorage.setItem('gh_mindmap_token',t);}catch(e){}}
+
+  window.showTokenDialog=function(){
+    document.getElementById('token-overlay').style.display='flex';
+    document.getElementById('token-input').value=getToken();
+    document.getElementById('token-input').focus();
+  };
+  window.hideTokenDialog=function(){document.getElementById('token-overlay').style.display='none';};
+  window.saveToken=function(){
+    var t=document.getElementById('token-input').value.trim();
+    if(t){setToken(t);hideTokenDialog();doSave();}
+  };
+
+  window.saveToGitHub=function(){
+    var token=getToken();
+    if(!token){showTokenDialog();return;}
+    doSave();
+  };
+
+  function utf8_to_b64(str){return btoa(unescape(encodeURIComponent(str)));}
+
+  function doSave(){
+    var token=getToken();if(!token)return;
+    var btn=document.getElementById('save-btn');
+    var status=document.getElementById('save-status');
+    btn.disabled=true;status.textContent='⏳ 保存中...';status.className='mindmap-save-status';
+    var content=document.getElementById('mindmap-textarea').value;
+    var path='source/raw_mindmap/'+sourceFilename;
+
+    fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+path,{
+      headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'}
+    }).then(function(r){
+      if(!r.ok)throw new Error('获取文件信息失败 ('+r.status+')');
+      return r.json();
+    }).then(function(data){
+      return fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+path,{
+        method:'PUT',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/vnd.github+json'},
+        body:JSON.stringify({message:'✏️ 更新 '+sourceFilename+' (via web editor)',content:utf8_to_b64(content),sha:data.sha})
+      });
+    }).then(function(r){
+      if(!r.ok)throw new Error('提交失败 ('+r.status+')');
+      status.textContent='✅ 已保存！GitHub Actions 正在重新部署，约1分钟后生效。';
+      status.className='mindmap-save-status success';
+      document.querySelector('#tree-view .mindmap-tree-text').textContent=content;
+      btn.disabled=false;
+    }).catch(function(err){
+      status.textContent='❌ '+err.message;
+      status.className='mindmap-save-status error';
+      btn.disabled=false;
+    });
+  }
 })();
 </script>"""
 
@@ -235,6 +426,8 @@ TOGGLE_HTML = """\
 <div class="mindmap-view-toggle">
   <button class="mindmap-toggle-btn active" onclick="switchMindmapView('mindmap')">🧠 思维导图</button>
   <button class="mindmap-toggle-btn" onclick="switchMindmapView('tree')">📝 原始文本</button>
+  <button id="edit-btn" class="mindmap-toggle-btn" style="border-style:dashed;" onclick="enterEditMode()">✏️ 编辑</button>
+  <button id="cancel-edit-btn" class="mindmap-toggle-btn" style="display:none;border-color:#cf222e;color:#cf222e;" onclick="exitEditMode(true)">✕ 取消编辑</button>
 </div>
 
 <div id="mindmap-view" class="mindmap-view-content">
@@ -244,28 +437,61 @@ TOGGLE_HTML = """\
 </div>
 
 <div id="tree-view" class="mindmap-view-content" style="display:none;">
-<pre class="mindmap-tree-text">
-{tree_text}
-</pre>
+<pre class="mindmap-tree-text">{tree_text}</pre>
+</div>
+
+<div id="edit-view" class="mindmap-view-content" style="display:none;">
+  <div class="mindmap-editor-wrapper">
+    <div class="mindmap-editor-toolbar">
+      <button onclick="editorCmd('highlight')" title="高亮 == ==">🖍 高亮</button>
+      <button onclick="editorCmd('strike')" title="删除线 ~~ ~~"><s>S</s> 删除线</button>
+      <button onclick="editorCmd('bold')" title="粗体 ** **"><b>B</b> 粗体</button>
+      <button onclick="editorCmd('code')" title="行内代码 ` `">&lt;/&gt; 代码</button>
+      <span style="flex:1;"></span>
+      <button onclick="editorUndo()" title="撤销 Ctrl+Z">↩ 撤销</button>
+      <button onclick="editorRedo()" title="重做 Ctrl+Y">↪ 重做</button>
+    </div>
+    <textarea id="mindmap-textarea" class="mindmap-editor-textarea" spellcheck="false">{tree_raw}</textarea>
+  </div>
+  <div class="mindmap-save-row" style="display:none;">
+    <button id="save-btn" class="mindmap-save-btn" onclick="saveToGitHub()">💾 保存到 GitHub</button>
+    <span id="save-status" class="mindmap-save-status"></span>
+  </div>
+</div>
+
+<div id="token-overlay" class="mindmap-token-overlay">
+  <div class="mindmap-token-dialog">
+    <h3>🔑 输入 GitHub Token</h3>
+    <input type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+    <div class="hint">
+      需要 <code>repo</code> 权限。<br />
+      <a href="https://github.com/settings/tokens/new?scopes=repo&description=Mindmap+Editor" target="_blank">→ 点击创建 Classic Token（勾选 repo）</a>
+    </div>
+    <div class="actions">
+      <button onclick="hideTokenDialog()">取消</button>
+      <button class="btn-primary" onclick="saveToken()">保存并提交</button>
+    </div>
+  </div>
 </div>
 """
 
 
-def build_output(title: str, markmap_body: str, tree_text: str) -> str:
-    """构建包含双视图切换的完整页面内容。"""
-    # HTML 转义原始文本
+def build_output(title: str, markmap_body: str, tree_text: str, source_filename: str) -> str:
+    """构建包含双视图切换 + 在线编辑器的完整页面内容。"""
     tree_escaped = (
         tree_text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .strip()
     )
-    toggle_html = TOGGLE_HTML.format(markmap_body=markmap_body, tree_text=tree_escaped)
+    tree_raw = tree_text.strip()
+    toggle_html = TOGGLE_HTML.format(markmap_body=markmap_body, tree_text=tree_escaped, tree_raw=tree_raw)
+    toggle_js = TOGGLE_JS.replace("__SOURCE_FILENAME__", source_filename)
     return f"""## {title}
 
 {TOGGLE_CSS}
 {toggle_html}
-{TOGGLE_JS}"""
+{toggle_js}"""
 
 
 def convert_file(input_path: Path, output_path: Path) -> bool:
@@ -305,7 +531,7 @@ def convert_file(input_path: Path, output_path: Path) -> bool:
 
     title = custom_title or input_path.stem
     frontmatter = generate_frontmatter(title, custom_date)
-    page_body = build_output(title, markmap_body, body)
+    page_body = build_output(title, markmap_body, body, input_path.name)
 
     output_text = f"""{frontmatter}
 
