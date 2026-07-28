@@ -33,7 +33,9 @@ jobs:
           python-version: '3.12'
 
       - name: Convert mindmaps
-        run: python scripts/convert_mindmap.py
+        env:
+          MINDMAP_TOKEN: ${{ secrets.MINDMAP_TOKEN }}
+        run: python scripts/convert_mindmap.py --force
 
       - name: Update knowledge graphs
         env:

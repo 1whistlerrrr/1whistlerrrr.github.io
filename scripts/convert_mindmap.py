@@ -21,6 +21,7 @@ import os
 import sys
 import json
 import hashlib
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -30,8 +31,34 @@ RAW_DIR = PROJECT_ROOT / "source" / "raw_mindmap"
 OUTPUT_DIR = PROJECT_ROOT / "source" / "mindmap" / "source"
 CACHE_FILE = PROJECT_ROOT / "source" / "mindmap" / ".convert_cache.json"
 
+# GitHub Token 加密密码
+TOKEN_PASSWORD = "lcy666"
+
 # 不需要转换的文件
 SKIP_FILES = {".DS_Store", "README.md", ".gitkeep"}
+
+
+def encrypt_token(token: str, password: str = TOKEN_PASSWORD) -> str:
+    """XOR 加密 GitHub Token，返回 base64 字符串。"""
+    if not token:
+        return ""
+    key = (password * (len(token) // len(password) + 1))[:len(token)]
+    encrypted = bytes([ord(t) ^ ord(k) for t, k in zip(token, key)])
+    return base64.b64encode(encrypted).decode()
+
+
+def get_encrypted_token() -> str:
+    """获取加密后的 Token（优先 CLI 参数，其次环境变量）。"""
+    token = None
+    # 从 CLI 参数获取: --token ghp_xxx
+    for i, arg in enumerate(sys.argv):
+        if arg == "--token" and i + 1 < len(sys.argv):
+            token = sys.argv[i + 1]
+            break
+    # 从环境变量获取
+    if not token:
+        token = os.environ.get("MINDMAP_TOKEN", "")
+    return encrypt_token(token) if token else ""
 
 
 def load_cache() -> dict:
@@ -366,30 +393,63 @@ TOGGLE_JS = """\
   });
   document.addEventListener('input',function(e){if(e.target.id==='mindmap-textarea'&&isEditing)pushHistory();});
 
+  var ENCRYPTED_TOKEN = '__ENCRYPTED_TOKEN__';
+
+  function decryptToken(encB64, password) {
+    var binary = atob(encB64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    var key = password.repeat(Math.ceil(bytes.length/password.length)).slice(0, bytes.length);
+    var result = new Uint8Array(bytes.length);
+    for (var i=0; i<bytes.length; i++) result[i] = bytes[i] ^ key.charCodeAt(i);
+    return String.fromCharCode.apply(null, result);
+  }
+
   function getToken(){try{return localStorage.getItem('gh_mindmap_token')||'';}catch(e){return '';}}
   function setToken(t){try{localStorage.setItem('gh_mindmap_token',t);}catch(e){}}
 
-  window.showTokenDialog=function(){
-    document.getElementById('token-overlay').style.display='flex';
-    document.getElementById('token-input').value=getToken();
-    document.getElementById('token-input').focus();
+  window.showPwdDialog=function(msg){
+    document.getElementById('pwd-overlay').style.display='flex';
+    document.getElementById('pwd-msg').textContent=msg||'';
+    document.getElementById('pwd-input').value='';
+    document.getElementById('pwd-input').focus();
   };
-  window.hideTokenDialog=function(){document.getElementById('token-overlay').style.display='none';};
-  window.saveToken=function(){
-    var t=document.getElementById('token-input').value.trim();
-    if(t){setToken(t);hideTokenDialog();doSave();}
+  window.hidePwdDialog=function(){document.getElementById('pwd-overlay').style.display='none';};
+  window.submitPassword=function(){
+    var pwd=document.getElementById('pwd-input').value.trim();
+    if(!pwd){showPwdDialog('请输入密码');return;}
+    hidePwdDialog();
+    doSave(pwd);
   };
 
   window.saveToGitHub=function(){
+    if(ENCRYPTED_TOKEN){
+      showPwdDialog('');
+      return;
+    }
     var token=getToken();
-    if(!token){showTokenDialog();return;}
-    doSave();
+    if(!token){showPwdDialog('');return;}
+    doSave(token);
   };
 
   function utf8_to_b64(str){return btoa(unescape(encodeURIComponent(str)));}
 
-  function doSave(){
-    var token=getToken();if(!token)return;
+  function doSave(pwdOrToken){
+    var token;
+    if(ENCRYPTED_TOKEN && pwdOrToken && pwdOrToken.length < 50){
+      try { token = decryptToken(ENCRYPTED_TOKEN, pwdOrToken); }
+      catch(e) { showPwdDialog('密码错误，请重试'); return; }
+      // Verify the decrypted token looks valid
+      if(!token || !token.startsWith('ghp_')&&!token.startsWith('github_pat_')){
+        showPwdDialog('密码错误，请重试'); return;
+      }
+    } else if(pwdOrToken && pwdOrToken.length >= 30) {
+      token = pwdOrToken;
+      setToken(token);
+    } else {
+      token = getToken();
+    }
+    if(!token){showPwdDialog('');return;}
     var btn=document.getElementById('save-btn');
     var status=document.getElementById('save-status');
     btn.disabled=true;status.textContent='⏳ 保存中...';status.className='mindmap-save-status';
@@ -459,24 +519,24 @@ TOGGLE_HTML = """\
   </div>
 </div>
 
-<div id="token-overlay" class="mindmap-token-overlay">
+<div id="pwd-overlay" class="mindmap-token-overlay">
   <div class="mindmap-token-dialog">
-    <h3>🔑 输入 GitHub Token</h3>
-    <input type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+    <h3>🔐 输入保存密码</h3>
+    <p id="pwd-msg" style="color:#cf222e;font-size:13px;margin:0 0 8px;"></p>
+    <input type="password" id="pwd-input" placeholder="请输入密码" onkeydown="if(event.key==='Enter')submitPassword()" />
     <div class="hint">
-      需要 <code>repo</code> 权限。<br />
-      <a href="https://github.com/settings/tokens/new?scopes=repo&description=Mindmap+Editor" target="_blank">→ 点击创建 Classic Token（勾选 repo）</a>
+      输入密码后将自动解密 Token 并提交到 GitHub。
     </div>
     <div class="actions">
-      <button onclick="hideTokenDialog()">取消</button>
-      <button class="btn-primary" onclick="saveToken()">保存并提交</button>
+      <button onclick="hidePwdDialog()">取消</button>
+      <button class="btn-primary" onclick="submitPassword()">确认提交</button>
     </div>
   </div>
 </div>
 """
 
 
-def build_output(title: str, markmap_body: str, tree_text: str, source_filename: str) -> str:
+def build_output(title: str, markmap_body: str, tree_text: str, source_filename: str, encrypted_token: str = "") -> str:
     """构建包含双视图切换 + 在线编辑器的完整页面内容。"""
     tree_escaped = (
         tree_text.replace("&", "&amp;")
@@ -487,6 +547,7 @@ def build_output(title: str, markmap_body: str, tree_text: str, source_filename:
     tree_raw = tree_text.strip()
     toggle_html = TOGGLE_HTML.format(markmap_body=markmap_body, tree_text=tree_escaped, tree_raw=tree_raw)
     toggle_js = TOGGLE_JS.replace("__SOURCE_FILENAME__", source_filename)
+    toggle_js = toggle_js.replace("__ENCRYPTED_TOKEN__", encrypted_token)
     return f"""## {title}
 
 {TOGGLE_CSS}
@@ -494,7 +555,7 @@ def build_output(title: str, markmap_body: str, tree_text: str, source_filename:
 {toggle_js}"""
 
 
-def convert_file(input_path: Path, output_path: Path) -> bool:
+def convert_file(input_path: Path, output_path: Path, encrypted_token: str = "") -> bool:
     """转换单个文件。"""
     try:
         raw_text = input_path.read_text(encoding="utf-8")
@@ -531,7 +592,7 @@ def convert_file(input_path: Path, output_path: Path) -> bool:
 
     title = custom_title or input_path.stem
     frontmatter = generate_frontmatter(title, custom_date)
-    page_body = build_output(title, markmap_body, body, input_path.name)
+    page_body = build_output(title, markmap_body, body, input_path.name, encrypted_token)
 
     output_text = f"""{frontmatter}
 
@@ -565,6 +626,13 @@ def main():
         print(f"   请将树形文本文件放入: {RAW_DIR}")
         return
 
+    encrypted_token = get_encrypted_token()
+    if encrypted_token:
+        print("🔐 Token 已加密嵌入页面（密码: lcy666）")
+    else:
+        print("⚠️  未提供 Token（--token 或 MINDMAP_TOKEN 环境变量），保存功能将不可用")
+    print()
+
     cache = load_cache() if not force else {}
     converted = []
     skipped = []
@@ -589,7 +657,7 @@ def main():
         output_path = OUTPUT_DIR / output_name
 
         print(f"🔄 转换: {input_path.name} → {output_name}")
-        if convert_file(input_path, output_path):
+        if convert_file(input_path, output_path, encrypted_token):
             converted.append(file_key)
             cache[file_key] = current_hash
         else:
