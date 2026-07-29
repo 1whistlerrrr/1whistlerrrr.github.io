@@ -6,7 +6,7 @@ type: "guestbook"
 
 ## 💬 留言板
 
-欢迎留言！所有留言会记录时间并保存。
+欢迎留言！鼠标悬停留言可看到删除按钮（需密码验证）。
 
 <div id="guestbook-standalone">
   <div id="gb-page-comments-list"><p class="gb-loading">加载中…</p></div>
@@ -21,10 +21,9 @@ type: "guestbook"
     <p id="gb-page-status"></p>
   </div>
 
-  <!-- 密码弹窗 -->
   <div id="gb-page-pwd-overlay" class="gb-page-pwd-overlay">
     <div class="gb-page-pwd-dialog">
-      <h4>🔐 输入密码</h4>
+      <h4 id="gb-page-pwd-title">🔐 输入密码</h4>
       <p id="gb-page-pwd-msg" style="color:#cf222e;font-size:12px;margin:0 0 8px;"></p>
       <input type="password" id="gb-page-pwd-input" placeholder="请输入密码" />
       <div class="gb-page-pwd-actions">
@@ -39,10 +38,15 @@ type: "guestbook"
 #guestbook-standalone { max-width: 680px; margin: 0 auto; }
 #gb-page-comments-list { min-height: 80px; margin-bottom: 24px; }
 .gb-page-loading, .gb-page-empty { text-align: center; color: #999; padding: 32px 0; font-size: 14px; }
-.gb-page-comment-item { padding: 14px 0; border-bottom: 1px solid #eee; }
+.gb-page-comment-item { position: relative; padding: 14px 0; border-bottom: 1px solid #eee; }
 .gb-page-comment-item:last-child { border-bottom: none; }
 .gb-page-comment-meta { font-size: 12px; color: #888; margin-bottom: 4px; }
-.gb-page-comment-body { font-size: 15px; color: #333; line-height: 1.6; word-break: break-word; }
+.gb-page-comment-body { font-size: 15px; color: #333; line-height: 1.6; word-break: break-word; padding-right: 28px; }
+.gb-page-comment-delete { position: absolute; top: 14px; right: 0; background: none; border: none;
+  color: #ccc; cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px;
+  opacity: 0; transition: opacity .2s; }
+.gb-page-comment-item:hover .gb-page-comment-delete { opacity: 1; }
+.gb-page-comment-delete:hover { color: #cf222e; }
 .gb-page-form { background: #f8f9fa; border-radius: 12px; padding: 16px 20px; }
 #gb-page-input-name { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px;
   font-size: 14px; margin-bottom: 10px; box-sizing: border-box; outline: none; background: #fff; }
@@ -61,7 +65,8 @@ type: "guestbook"
 .gb-page-status-error { color: #cf222e; }
 .gb-page-pwd-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
-.gb-page-pwd-dialog { background: #fff; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+.gb-page-pwd-dialog { background: #fff; border-radius: 12px; padding: 24px; text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2); }
 .gb-page-pwd-dialog h4 { margin: 0 0 12px; font-size: 16px; color: #333; }
 #gb-page-pwd-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px;
   font-size: 14px; width: 200px; text-align: center; outline: none; }
@@ -79,6 +84,8 @@ type: "guestbook"
 [data-theme="dark"] .gb-page-pwd-dialog h4 { color: #cdd6f4; }
 [data-theme="dark"] #gb-page-pwd-input { background: #313244; border-color: #45475a; color: #cdd6f4; }
 [data-theme="dark"] .gb-page-pwd-actions button { background: #313244; border-color: #45475a; color: #cdd6f4; }
+[data-theme="dark"] .gb-page-comment-delete { color: #585b70; }
+[data-theme="dark"] .gb-page-comment-delete:hover { color: #e06c75; }
 </style>
 
 <script>
@@ -89,6 +96,7 @@ type: "guestbook"
   var API_URL = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + COMMENTS_PATH;
   var ENCRYPTED_TOKEN = 'CwsJaWEFNFQNUGZXCDISck5xKCIuQ1UGFBo/V3NvBS8YBAUCHDYRZw==';
   var COMMENTS_CACHE = null, FILE_SHA = null;
+  var pendingAction = null;
 
   function decryptToken(encB64, pwd) {
     try {
@@ -100,7 +108,6 @@ type: "guestbook"
       return String.fromCharCode.apply(null,r);
     } catch(e) { return ''; }
   }
-  function getCachedToken() { try { return localStorage.getItem('gh_mindmap_token')||''; } catch(e) { return ''; } }
   function setCachedToken(t) { try { localStorage.setItem('gh_mindmap_token',t); } catch(e) {} }
   function resolveToken(pwd) {
     if (ENCRYPTED_TOKEN && pwd && pwd.length<50) {
@@ -108,7 +115,7 @@ type: "guestbook"
       if (!tok||(!tok.startsWith('ghp_')&&!tok.startsWith('github_pat_'))) return null;
       setCachedToken(tok); return tok;
     }
-    return null; // no cached-token fallback
+    return null;
   }
 
   function fetchComments(cb) {
@@ -125,14 +132,13 @@ type: "guestbook"
     x.onload=function(){if(x.status===200){var d=JSON.parse(x.responseText);FILE_SHA=d.sha;cb(FILE_SHA);}else if(x.status===404){FILE_SHA=null;cb(null);}else{errCb('获取文件信息失败 ('+x.status+')');}};
     x.onerror=function(){errCb('网络错误');};x.send();
   }
-  function saveComments(token,comments,sha,cb,errCb) {
+  function saveComments(token,comments,sha,commitMsg,cb,errCb) {
     var x=new XMLHttpRequest();
     x.open('PUT',API_URL,true);
     x.setRequestHeader('Authorization','Bearer '+token);
     x.setRequestHeader('Content-Type','application/json');
     x.setRequestHeader('Accept','application/vnd.github+json');
-    var body={message:'💬 新增留言 ('+new Date().toISOString().slice(0,10)+')',
-      content:btoa(unescape(encodeURIComponent(JSON.stringify(comments,null,2))))};
+    var body={message:commitMsg, content:btoa(unescape(encodeURIComponent(JSON.stringify(comments,null,2))))};
     if(sha) body.sha=sha;
     x.onload=function(){if(x.status===200||x.status===201){var d=JSON.parse(x.responseText);FILE_SHA=d.content?d.content.sha:sha;cb();}else{errCb('提交失败 ('+x.status+')');}};
     x.onerror=function(){errCb('网络错误');};x.send(JSON.stringify(body));
@@ -145,37 +151,86 @@ type: "guestbook"
     var list=document.getElementById('gb-page-comments-list');
     if(!comments||comments.length===0){list.innerHTML='<p class="gb-page-empty">还没有留言，来说两句吧 👋</p>';return;}
     var h='';
-    for(var i=comments.length-1;i>=0;i--){var c=comments[i];h+='<div class="gb-page-comment-item"><div class="gb-page-comment-meta"><strong>'+escapeHtml(c.name||'匿名')+'</strong> · '+formatTime(c.time||c.date||'')+'</div><div class="gb-page-comment-body">'+escapeHtml(c.message||'')+'</div></div>';}
+    for(var i=comments.length-1;i>=0;i--){
+      var c=comments[i];
+      h+='<div class="gb-page-comment-item">'+
+        '<button class="gb-page-comment-delete" data-index="'+i+'" title="删除此留言">&times;</button>'+
+        '<div class="gb-page-comment-meta"><strong>'+escapeHtml(c.name||'匿名')+'</strong> · '+formatTime(c.time||c.date||'')+'</div>'+
+        '<div class="gb-page-comment-body">'+escapeHtml(c.message||'')+'</div>'+
+        '</div>';
+    }
     list.innerHTML=h;
+    list.querySelectorAll('.gb-page-comment-delete').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var idx=parseInt(this.getAttribute('data-index'));
+        startDelete(idx);
+      });
+    });
   }
 
   function loadAndRender(){fetchComments(renderComments);}
 
-  function showPwdError(msg){document.getElementById('gb-page-pwd-msg').textContent=msg;document.getElementById('gb-page-pwd-overlay').style.display='flex';document.getElementById('gb-page-pwd-input').value='';document.getElementById('gb-page-pwd-input').focus();}
+  function showPwd(title,msg){
+    document.getElementById('gb-page-pwd-title').textContent=title||'🔐 输入密码';
+    document.getElementById('gb-page-pwd-msg').textContent=msg||'';
+    document.getElementById('gb-page-pwd-overlay').style.display='flex';
+    document.getElementById('gb-page-pwd-input').value='';
+    document.getElementById('gb-page-pwd-input').focus();
+  }
+  function hidePwd(){document.getElementById('gb-page-pwd-overlay').style.display='none';}
 
+  // ============ Submit ============
   document.getElementById('gb-page-submit-btn').addEventListener('click',function(){
     var msg=document.getElementById('gb-page-input-msg').value.trim();
     if(!msg){document.getElementById('gb-page-status').textContent='请输入留言内容';document.getElementById('gb-page-status').className='gb-page-status-error';return;}
-    var cached = null; //
-    // always require password
-    document.getElementById('gb-page-pwd-overlay').style.display='flex';
-    document.getElementById('gb-page-pwd-input').value='';
-    document.getElementById('gb-page-pwd-msg').textContent='';
-    document.getElementById('gb-page-pwd-input').focus();
+    pendingAction='submit';
+    showPwd('🔐 发送留言 - 输入密码');
   });
 
-  document.getElementById('gb-page-pwd-cancel').addEventListener('click',function(){document.getElementById('gb-page-pwd-overlay').style.display='none';});
+  // ============ Delete ============
+  function startDelete(index){
+    if(!COMMENTS_CACHE||index<0||index>=COMMENTS_CACHE.length) return;
+    pendingAction={type:'delete',index:index};
+    var c=COMMENTS_CACHE[index];
+    showPwd('🔐 删除留言 - 输入密码','将删除：'+ (c.name||'匿名')+' 的留言（'+formatTime(c.time||'')+'）');
+  }
+
+  function doDelete(pwd, index){
+    var token=resolveToken(pwd);
+    if(!token){showPwd('🔐 密码错误','密码错误，请重试');pendingAction=null;return;}
+    var st=document.getElementById('gb-page-status');
+    st.textContent='⏳ 删除中…';st.className='';
+    getFileSha(token,function(sha){
+      if(!COMMENTS_CACHE) return;
+      var comments=COMMENTS_CACHE.slice();
+      comments.splice(index,1);
+      saveComments(token,comments,sha,'🗑️ 删除留言',function(){
+        COMMENTS_CACHE=comments;renderComments(comments);
+        st.textContent='✅ 已删除';st.className='gb-page-status-success';
+        pendingAction=null;
+      },function(err){
+        st.textContent='❌ '+err;st.className='gb-page-status-error';pendingAction=null;
+      });
+    },function(err){
+      st.textContent='❌ '+err;st.className='gb-page-status-error';pendingAction=null;
+    });
+  }
+
+  // ============ Password confirm ============
+  document.getElementById('gb-page-pwd-cancel').addEventListener('click',function(){hidePwd();pendingAction=null;});
   document.getElementById('gb-page-pwd-confirm').addEventListener('click',function(){
     var pwd=document.getElementById('gb-page-pwd-input').value.trim();
-    if(!pwd){showPwdError('请输入密码');return;}
-    document.getElementById('gb-page-pwd-overlay').style.display='none';
-    doSubmit(pwd);
+    if(!pwd){showPwd('🔐 请输入密码','请输入密码');return;}
+    hidePwd();
+    if(pendingAction==='submit'){doSubmit(pwd);}
+    else if(pendingAction&&pendingAction.type==='delete'){doDelete(pwd,pendingAction.index);}
+    pendingAction=null;
   });
   document.getElementById('gb-page-pwd-input').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('gb-page-pwd-confirm').click();});
 
   function doSubmit(pwd){
     var token=resolveToken(pwd);
-    if(!token){showPwdError('密码错误，请重试');return;}
+    if(!token){showPwd('🔐 密码错误','密码错误，请重试');pendingAction=null;return;}
     var name=document.getElementById('gb-page-input-name').value.trim();
     var msg=document.getElementById('gb-page-input-msg').value.trim();
     var btn=document.getElementById('gb-page-submit-btn'),st=document.getElementById('gb-page-status');
@@ -183,7 +238,7 @@ type: "guestbook"
     getFileSha(token,function(sha){
       var comments=(COMMENTS_CACHE&&COMMENTS_CACHE.length)?COMMENTS_CACHE.slice():[];
       comments.push({name:name||'匿名',message:msg,time:new Date().toISOString()});
-      saveComments(token,comments,sha,function(){
+      saveComments(token,comments,sha,'💬 新增留言 ('+new Date().toISOString().slice(0,10)+')',function(){
         COMMENTS_CACHE=comments;renderComments(comments);
         document.getElementById('gb-page-input-msg').value='';
         document.getElementById('gb-page-input-name').value='';
