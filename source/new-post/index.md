@@ -4,9 +4,9 @@ date: 2026-07-29 10:00:00
 type: "newpost"
 ---
 
-## 📝 新增页面
+## 📝 新增 / 编辑页面
 
-填写文章标题和内容（Markdown 格式），点击提交后需验证身份。
+填写内容后提交需验证身份。点击下方列表的"编辑"按钮可修改已有文章。
 
 <div id="newpost-form-container">
   <div class="np-field">
@@ -26,16 +26,16 @@ type: "newpost"
 
   <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
     <button id="np-submit-btn">💾 提交到博客</button>
+    <button id="np-cancel-edit-btn" style="display:none;padding:8px 20px;background:none;border:1px solid #999;color:#999;border-radius:22px;cursor:pointer;font-size:13px;">取消编辑</button>
     <span id="np-status"></span>
   </div>
 </div>
 
 <hr style="margin:40px 0 24px;border-color:#eee;">
 
-## 🗑️ 删除页面
+## 📋 文章管理
 
 <div id="np-delete-container">
-  <p style="color:#888;font-size:13px;margin-bottom:16px;">需要密码验证。点击即确认删除，操作不可撤销。</p>
   <div id="np-posts-list"><p class="np-loading">加载文章列表中…</p></div>
 </div>
 
@@ -66,6 +66,7 @@ type: "newpost"
   border-radius: 22px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all .3s; }
 #np-submit-btn:hover { background: #1a7f37; transform: translateY(-1px); }
 #np-submit-btn:disabled { background: #94d3a2; cursor: not-allowed; transform: none; }
+#np-cancel-edit-btn:hover { border-color:#cf222e;color:#cf222e; }
 #np-status { font-size: 13px; }
 .np-status-success { color: #2da44e; }
 .np-status-error { color: #cf222e; }
@@ -77,9 +78,14 @@ type: "newpost"
 .np-post-name { font-size: 14px; color: #333; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-post-date { font-size: 11px; color: #999; margin-top: 2px; }
+.np-post-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 12px; }
+.np-edit-btn { padding: 4px 14px; background: none; border: 1px solid #9FA1FF;
+  color: #9FA1FF; border-radius: 16px; cursor: pointer; font-size: 12px;
+  white-space: nowrap; transition: all .2s; }
+.np-edit-btn:hover { background: #9FA1FF; color: #fff; }
 .np-delete-btn { padding: 4px 14px; background: none; border: 1px solid #cf222e;
   color: #cf222e; border-radius: 16px; cursor: pointer; font-size: 12px;
-  white-space: nowrap; transition: all .2s; flex-shrink: 0; margin-left: 12px; }
+  white-space: nowrap; transition: all .2s; }
 .np-delete-btn:hover { background: #cf222e; color: #fff; }
 #np-pwd-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
@@ -102,6 +108,8 @@ type: "newpost"
 [data-theme="dark"] .np-pwd-dialog h4 { color: #cdd6f4; }
 [data-theme="dark"] #np-pwd-input { background: #313244; border-color: #45475a; color: #cdd6f4; }
 [data-theme="dark"] .np-pwd-actions button { background: #313244; border-color: #45475a; color: #cdd6f4; }
+[data-theme="dark"] .np-edit-btn { border-color: #89b4fa; color: #89b4fa; }
+[data-theme="dark"] .np-edit-btn:hover { background: #89b4fa; color: #1e1e2e; }
 </style>
 
 <script>
@@ -109,7 +117,8 @@ type: "newpost"
   var OWNER = '1whistlerrrr', REPO = '1whistlerrrr.github.io';
   var POSTS_API = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/source/_posts/';
   var ENCRYPTED_TOKEN = 'CwsJaWEFNFQNUGZXCDISck5xKCIuQ1UGFBo/V3NvBS8YBAUCHDYRZw==';
-  var pendingAction = null; // 'create' or {type:'delete', path:'...', sha:'...', name:'...'}
+  var pendingAction = null; // 'create' | 'update' | {type:'delete', ...}
+  var editingFile = null; // null or {path, sha, name, originalTitle}
 
   function decryptToken(encB64, pwd) {
     try {
@@ -146,6 +155,27 @@ type: "newpost"
     el.className = type === 'success' ? 'np-status-success' : (type === 'error' ? 'np-status-error' : '');
   }
 
+  function resetForm() {
+    document.getElementById('np-title').value = '';
+    document.getElementById('np-tags').value = '';
+    document.getElementById('np-content').value = '';
+    document.getElementById('np-submit-btn').textContent = '💾 提交到博客';
+    document.getElementById('np-cancel-edit-btn').style.display = 'none';
+    editingFile = null;
+    showStatus('', '');
+  }
+
+  function enterEditMode(path, sha, name, title, tags, content) {
+    editingFile = { path: path, sha: sha, name: name, originalTitle: title };
+    document.getElementById('np-title').value = title;
+    document.getElementById('np-tags').value = tags;
+    document.getElementById('np-content').value = content;
+    document.getElementById('np-submit-btn').textContent = '💾 更新文章';
+    document.getElementById('np-cancel-edit-btn').style.display = 'inline-block';
+    showStatus('正在编辑：' + name + '（修改后提交需密码验证）', '');
+    document.getElementById('np-title').focus();
+  }
+
   function slugify(title) {
     return title.toLowerCase().replace(/\s+/g,'-').replace(/[^\w一-鿿\-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'').substring(0,60) || 'untitled';
   }
@@ -155,15 +185,28 @@ type: "newpost"
     return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
   }
 
-  // ============ Create Post ============
+  // ============ Submit (create or update) ============
   document.getElementById('np-submit-btn').addEventListener('click', function() {
     var title = document.getElementById('np-title').value.trim();
     var content = document.getElementById('np-content').value.trim();
     if (!title) { showStatus('请输入文章标题', 'error'); return; }
     if (!content) { showStatus('请输入文章内容', 'error'); return; }
-    pendingAction = 'create';
-    showPwd('🔐 创建文章 - 输入密码');
+    pendingAction = editingFile ? 'update' : 'create';
+    showPwd(editingFile ? '🔐 更新文章 - 输入密码' : '🔐 创建文章 - 输入密码');
   });
+
+  document.getElementById('np-cancel-edit-btn').addEventListener('click', function() { resetForm(); });
+
+  function buildFrontmatter(title, tagsStr) {
+    var tagsArr = tagsStr ? tagsStr.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+    var tagsYaml = tagsArr.length ? '\ntags:\n' + tagsArr.map(function(t) { return '  - ' + t; }).join('\n') : '';
+    var dateStr = editingFile ? (editingFile.originalTitle || getDateStr()) : getDateStr();
+    return '---\n' +
+      'title: ' + title + '\n' +
+      'date: ' + dateStr + ' ' + new Date().toTimeString().slice(0,8) + '\n' +
+      tagsYaml + '\n' +
+      '---\n\n';
+  }
 
   function doCreate(pwd) {
     var token = resolveToken(pwd);
@@ -175,23 +218,13 @@ type: "newpost"
     var slug = slugify(title);
     var dateStr = getDateStr();
     var filename = dateStr + '-' + slug + '.md';
-    var tagsArr = tags ? tags.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
-    var tagsYaml = tagsArr.length ? '\ntags:\n' + tagsArr.map(function(t) { return '  - ' + t; }).join('\n') : '';
-
-    var frontmatter =
-      '---\n' +
-      'title: ' + title + '\n' +
-      'date: ' + dateStr + ' ' + new Date().toTimeString().slice(0,8) + '\n' +
-      tagsYaml + '\n' +
-      '---\n\n' +
-      content + '\n';
+    var frontmatter = buildFrontmatter(title, tags) + content + '\n';
 
     var btn = document.getElementById('np-submit-btn');
     btn.disabled = true;
     showStatus('⏳ 提交中…', '');
 
     var apiUrl = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/source/_posts/' + filename;
-
     var checkXhr = new XMLHttpRequest();
     checkXhr.open('GET', apiUrl, true);
     checkXhr.setRequestHeader('Authorization', 'Bearer ' + token);
@@ -211,11 +244,8 @@ type: "newpost"
         content: btoa(unescape(encodeURIComponent(frontmatter))) };
       putXhr.onload = function() {
         if (putXhr.status === 200 || putXhr.status === 201) {
-          showStatus('✅ 文章已提交！GitHub Actions 正在部署。', 'success');
-          document.getElementById('np-title').value = '';
-          document.getElementById('np-tags').value = '';
-          document.getElementById('np-content').value = '';
-          loadPosts(); // 刷新列表
+          showStatus('✅ 文章已提交！', 'success');
+          resetForm(); loadPosts();
         } else {
           var msg = '提交失败 (' + putXhr.status + ')';
           try { var d = JSON.parse(putXhr.responseText); if (d.message) msg = d.message; } catch(e) {}
@@ -230,26 +260,97 @@ type: "newpost"
     checkXhr.send();
   }
 
+  function doUpdate(pwd) {
+    var token = resolveToken(pwd);
+    if (!token || !editingFile) { showPwd('🔐 密码错误', '密码错误，请重试'); pendingAction = null; return; }
+
+    var title = document.getElementById('np-title').value.trim();
+    var tags = document.getElementById('np-tags').value.trim();
+    var content = document.getElementById('np-content').value.trim();
+    var frontmatter = buildFrontmatter(title, tags) + content + '\n';
+
+    var btn = document.getElementById('np-submit-btn');
+    btn.disabled = true;
+    showStatus('⏳ 更新中…', '');
+
+    var apiUrl = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + editingFile.path;
+    var xhr = new XMLHttpRequest();
+    xhr.open('PUT', apiUrl, true);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Accept', 'application/vnd.github+json');
+    var body = {
+      message: '✏️ 更新文章：' + title + ' (via web editor)',
+      content: btoa(unescape(encodeURIComponent(frontmatter))),
+      sha: editingFile.sha
+    };
+    xhr.onload = function() {
+      if (xhr.status === 200 || xhr.status === 201) {
+        showStatus('✅ 文章已更新！', 'success');
+        resetForm(); loadPosts();
+      } else {
+        var msg = '更新失败 (' + xhr.status + ')';
+        try { var d = JSON.parse(xhr.responseText); if (d.message) msg = d.message; } catch(e) {}
+        showStatus('❌ ' + msg, 'error');
+      }
+      btn.disabled = false;
+    };
+    xhr.onerror = function() { showStatus('❌ 网络错误', 'error'); btn.disabled = false; };
+    xhr.send(JSON.stringify(body));
+  }
+
+  // ============ Edit Post ============
+  function startEdit(path, sha, name) {
+    showStatus('⏳ 加载文章内容…', '');
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + path, true);
+    xhr.setRequestHeader('Accept', 'application/vnd.github+json');
+    xhr.onload = function() {
+      if (xhr.status !== 200) { showStatus('❌ 加载失败 (' + xhr.status + ')', 'error'); return; }
+      try {
+        var d = JSON.parse(xhr.responseText);
+        var raw = decodeURIComponent(escape(atob(d.content.replace(/\s/g, ''))));
+        // 解析 frontmatter
+        var title = '', tags = '', content = raw;
+        if (raw.indexOf('---') === 0) {
+          var endIdx = raw.indexOf('---', 3);
+          if (endIdx > 0) {
+            var fm = raw.substring(3, endIdx).trim();
+            content = raw.substring(endIdx + 3).trim();
+            fm.split('\n').forEach(function(line) {
+              var m;
+              if (m = line.match(/^title:\s*(.+)/i)) title = m[1].trim().replace(/^['"]|['"]$/g, '');
+              if (m = line.match(/^tags:\s*$/i)) tags = '';
+              if (m = line.match(/^\s*-\s*(.+)/)) {
+                if (tags !== undefined) tags += (tags ? ', ' : '') + m[1].trim();
+              }
+            });
+          }
+        }
+        enterEditMode(path, d.sha, name, title, tags, content);
+      } catch(e) {
+        showStatus('❌ 解析失败', 'error');
+        // fallback: just load raw content
+        var raw2 = decodeURIComponent(escape(atob(JSON.parse(xhr.responseText).content.replace(/\s/g, ''))));
+        enterEditMode(path, sha, name, '', '', raw2);
+      }
+    };
+    xhr.onerror = function() { showStatus('❌ 网络错误', 'error'); };
+    xhr.send();
+  }
+
   // ============ Delete Post ============
   function loadPosts() {
     var list = document.getElementById('np-posts-list');
     list.innerHTML = '<p class="np-loading">加载文章列表中…</p>';
-    // Use raw API with no auth needed for read
     var xhr = new XMLHttpRequest();
     xhr.open('GET', POSTS_API + '?t=' + Date.now(), true);
     xhr.setRequestHeader('Accept', 'application/vnd.github+json');
     xhr.onload = function() {
-      if (xhr.status !== 200) {
-        list.innerHTML = '<p class="np-loading">加载失败 (' + xhr.status + ')</p>';
-        return;
-      }
+      if (xhr.status !== 200) { list.innerHTML = '<p class="np-loading">加载失败 (' + xhr.status + ')</p>'; return; }
       try {
         var files = JSON.parse(xhr.responseText);
-        if (!Array.isArray(files) || files.length === 0) {
-          list.innerHTML = '<p class="np-loading">暂无文章</p>';
-          return;
-        }
-        // 过滤只显示 .md 文件，按时间倒序
+        if (!Array.isArray(files) || files.length === 0) { list.innerHTML = '<p class="np-loading">暂无文章</p>'; return; }
         var posts = files.filter(function(f) { return f.name.endsWith('.md'); });
         posts.sort(function(a, b) { return b.name.localeCompare(a.name); });
         var h = '';
@@ -262,21 +363,24 @@ type: "newpost"
             '<div class="np-post-name">' + escapeHtml(titleStr) + '</div>' +
             (dateStr ? '<div class="np-post-date">' + dateStr + '</div>' : '') +
             '</div>' +
+            '<div class="np-post-actions">' +
+            '<button class="np-edit-btn" data-path="' + escapeHtml(p.path) + '" data-sha="' + escapeHtml(p.sha) + '" data-name="' + escapeHtml(p.name) + '">✏️ 编辑</button>' +
             '<button class="np-delete-btn" data-path="' + escapeHtml(p.path) + '" data-sha="' + escapeHtml(p.sha) + '" data-name="' + escapeHtml(p.name) + '">🗑 删除</button>' +
+            '</div>' +
             '</div>';
         });
         list.innerHTML = h;
-        list.querySelectorAll('.np-delete-btn').forEach(function(btn) {
+        list.querySelectorAll('.np-edit-btn').forEach(function(btn) {
           btn.addEventListener('click', function() {
-            var path = this.getAttribute('data-path');
-            var sha = this.getAttribute('data-sha');
-            var name = this.getAttribute('data-name');
-            startDelete(path, sha, name);
+            startEdit(this.getAttribute('data-path'), this.getAttribute('data-sha'), this.getAttribute('data-name'));
           });
         });
-      } catch(e) {
-        list.innerHTML = '<p class="np-loading">解析失败</p>';
-      }
+        list.querySelectorAll('.np-delete-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            startDelete(this.getAttribute('data-path'), this.getAttribute('data-sha'), this.getAttribute('data-name'));
+          });
+        });
+      } catch(e) { list.innerHTML = '<p class="np-loading">解析失败</p>'; }
     };
     xhr.onerror = function() { list.innerHTML = '<p class="np-loading">加载失败（网络错误）</p>'; };
     xhr.send();
@@ -294,7 +398,6 @@ type: "newpost"
     var token = resolveToken(pwd);
     if (!token) { showPwd('🔐 密码错误', '密码错误，请重试'); pendingAction = null; return; }
     showStatus('⏳ 删除中…', '');
-
     var apiUrl = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + item.path;
     var xhr = new XMLHttpRequest();
     xhr.open('DELETE', apiUrl, true);
@@ -305,7 +408,7 @@ type: "newpost"
     xhr.onload = function() {
       if (xhr.status === 200 || xhr.status === 204) {
         showStatus('✅ 已删除：' + item.name, 'success');
-        loadPosts(); // 刷新列表
+        loadPosts();
       } else {
         var msg = '删除失败 (' + xhr.status + ')';
         try { var d = JSON.parse(xhr.responseText); if (d.message) msg = d.message; } catch(e) {}
@@ -322,11 +425,9 @@ type: "newpost"
     var pwd = document.getElementById('np-pwd-input').value.trim();
     if (!pwd) { showPwd('🔐 请输入密码', '请输入密码'); return; }
     hidePwd();
-    if (pendingAction === 'create') {
-      doCreate(pwd);
-    } else if (pendingAction && pendingAction.type === 'delete') {
-      doDelete(pwd, pendingAction);
-    }
+    if (pendingAction === 'create') { doCreate(pwd); }
+    else if (pendingAction === 'update') { doUpdate(pwd); }
+    else if (pendingAction && pendingAction.type === 'delete') { doDelete(pwd, pendingAction); }
     pendingAction = null;
   });
   document.getElementById('np-pwd-input').addEventListener('keydown', function(e) {
