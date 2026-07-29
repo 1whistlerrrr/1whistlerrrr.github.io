@@ -7,14 +7,16 @@ nav:
 
 menu:
   首页: / || fas fa-home
-  归档: /archives/ || fas fa-archive
   知识图谱: /knowledge/ || fas fa-sitemap
   项目: /projects/ || fas fa-code-branch
-  关于: /about/ || fas fa-user
+  归档: "#"
+  关于: "#"
   更多||fas fa-ellipsis-h:
+    归档: /archives/ || fas fa-archive
     思维导图: /mindmap/ || fas fa-project-diagram
     留言板: /guestbook/ || fas fa-comments
     新增页面: /new-post/ || fas fa-plus-square
+    关于: /about/ || fas fa-user
 
 code_blocks:
   theme: dark
@@ -112,5 +114,7 @@ theme_color:
   main: "#9FA1FF"
 
 inject:
+  head:
+    - '<style>.menus_items>.menus_item:has(>a[href="#"]){display:none}</style>'
   bottom:
     - '<script src="/js/guestbook-widget.js"></script>'
