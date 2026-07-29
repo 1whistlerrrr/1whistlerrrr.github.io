@@ -114,8 +114,5 @@ theme_color:
   main: "#9FA1FF"
 
 inject:
-  head:
-    - '<style>.menus_items>.menus_item:has(>a[href="#"]){display:none}</style>'
   bottom:
-    - '<script>document.addEventListener("DOMContentLoaded",function(){var a=document.querySelectorAll(".menus_items>.menus_item>a");for(var i=0;i<a.length;i++){if(a[i].getAttribute("href")==="#")a[i].parentElement.style.display="none"}})</script>'
     - '<script src="/js/guestbook-widget.js"></script>'
