@@ -92,7 +92,6 @@ type: "guestbook"
 (function() {
   var OWNER = '1whistlerrrr', REPO = '1whistlerrrr.github.io';
   var COMMENTS_PATH = 'source/_data/comments.json';
-  var RAW_URL = 'https://raw.githubusercontent.com/' + OWNER + '/' + REPO + '/main/' + COMMENTS_PATH;
   var API_URL = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + COMMENTS_PATH;
   var ENCRYPTED_TOKEN = 'CwsJaWEFNFQNUGZXCDISck5xKCIuQ1UGFBo/V3NvBS8YBAUCHDYRZw==';
   var COMMENTS_CACHE = null, FILE_SHA = null;
@@ -118,138 +117,151 @@ type: "guestbook"
     return null;
   }
 
+  // 用 GitHub API 读取文件（不走 raw.githubusercontent.com，无 CDN 缓存延迟）
   function fetchComments(cb) {
-    var x=new XMLHttpRequest();
-    x.open('GET',RAW_URL+'?t='+Date.now(),true);
-    x.onload=function(){if(x.status===200){try{COMMENTS_CACHE=JSON.parse(x.responseText);}catch(e){COMMENTS_CACHE=[];}}else{COMMENTS_CACHE=[];}cb(COMMENTS_CACHE);};
-    x.onerror=function(){cb(COMMENTS_CACHE||[]);};x.send();
-  }
-  function getFileSha(token,cb,errCb) {
-    var x=new XMLHttpRequest();
-    x.open('GET',API_URL,true);
-    x.setRequestHeader('Authorization','Bearer '+token);
-    x.setRequestHeader('Accept','application/vnd.github+json');
-    x.onload=function(){if(x.status===200){var d=JSON.parse(x.responseText);FILE_SHA=d.sha;cb(FILE_SHA);}else if(x.status===404){FILE_SHA=null;cb(null);}else{errCb('获取文件信息失败 ('+x.status+')');}};
-    x.onerror=function(){errCb('网络错误');};x.send();
-  }
-  function saveComments(token,comments,sha,commitMsg,cb,errCb) {
-    var x=new XMLHttpRequest();
-    x.open('PUT',API_URL,true);
-    x.setRequestHeader('Authorization','Bearer '+token);
-    x.setRequestHeader('Content-Type','application/json');
-    x.setRequestHeader('Accept','application/vnd.github+json');
-    var body={message:commitMsg, content:btoa(unescape(encodeURIComponent(JSON.stringify(comments,null,2))))};
-    if(sha) body.sha=sha;
-    x.onload=function(){if(x.status===200||x.status===201){var d=JSON.parse(x.responseText);FILE_SHA=d.content?d.content.sha:sha;cb();}else{errCb('提交失败 ('+x.status+')');}};
-    x.onerror=function(){errCb('网络错误');};x.send(JSON.stringify(body));
+    var x = new XMLHttpRequest();
+    x.open('GET', API_URL, true);
+    x.setRequestHeader('Accept', 'application/vnd.github+json');
+    x.onload = function() {
+      if (x.status === 200) {
+        try {
+          var d = JSON.parse(x.responseText);
+          if (d.content) {
+            var raw = atob(d.content.replace(/\s/g, ''));
+            COMMENTS_CACHE = JSON.parse(decodeURIComponent(escape(raw)));
+            FILE_SHA = d.sha;
+          }
+        } catch(e) { COMMENTS_CACHE = []; }
+      } else {
+        COMMENTS_CACHE = [];
+      }
+      cb(COMMENTS_CACHE);
+    };
+    x.onerror = function() { cb(COMMENTS_CACHE || []); };
+    x.send();
   }
 
-  function formatTime(iso){var d=new Date(iso);var p=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
-  function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+  function saveComments(token, comments, sha, commitMsg, cb, errCb) {
+    var x = new XMLHttpRequest();
+    x.open('PUT', API_URL, true);
+    x.setRequestHeader('Authorization', 'Bearer ' + token);
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.setRequestHeader('Accept', 'application/vnd.github+json');
+    var body = { message: commitMsg, content: btoa(unescape(encodeURIComponent(JSON.stringify(comments, null, 2)))) };
+    if (sha) body.sha = sha;
+    x.onload = function() {
+      if (x.status === 200 || x.status === 201) {
+        var d = JSON.parse(x.responseText);
+        FILE_SHA = d.content ? d.content.sha : sha;
+        cb();
+      } else {
+        errCb('提交失败 (' + x.status + ')');
+      }
+    };
+    x.onerror = function() { errCb('网络错误'); };
+    x.send(JSON.stringify(body));
+  }
+
+  function formatTime(iso) { var d = new Date(iso); var p = function(n) { return n < 10 ? '0' + n : '' + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   function renderComments(comments) {
-    var list=document.getElementById('gb-page-comments-list');
-    if(!comments||comments.length===0){list.innerHTML='<p class="gb-page-empty">还没有留言，来说两句吧 👋</p>';return;}
-    var h='';
-    for(var i=comments.length-1;i>=0;i--){
-      var c=comments[i];
-      h+='<div class="gb-page-comment-item">'+
-        '<button class="gb-page-comment-delete" data-index="'+i+'" title="删除此留言">&times;</button>'+
-        '<div class="gb-page-comment-meta"><strong>'+escapeHtml(c.name||'匿名')+'</strong> · '+formatTime(c.time||c.date||'')+'</div>'+
-        '<div class="gb-page-comment-body">'+escapeHtml(c.message||'')+'</div>'+
+    var list = document.getElementById('gb-page-comments-list');
+    if (!comments || comments.length === 0) { list.innerHTML = '<p class="gb-page-empty">还没有留言，来说两句吧 👋</p>'; return; }
+    var h = '';
+    for (var i = comments.length - 1; i >= 0; i--) {
+      var c = comments[i];
+      h += '<div class="gb-page-comment-item">' +
+        '<button class="gb-page-comment-delete" data-index="' + i + '" title="删除此留言">&times;</button>' +
+        '<div class="gb-page-comment-meta"><strong>' + escapeHtml(c.name || '匿名') + '</strong> · ' + formatTime(c.time || c.date || '') + '</div>' +
+        '<div class="gb-page-comment-body">' + escapeHtml(c.message || '') + '</div>' +
         '</div>';
     }
-    list.innerHTML=h;
-    list.querySelectorAll('.gb-page-comment-delete').forEach(function(btn){
-      btn.addEventListener('click',function(){
-        var idx=parseInt(this.getAttribute('data-index'));
-        startDelete(idx);
+    list.innerHTML = h;
+    list.querySelectorAll('.gb-page-comment-delete').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        startDelete(parseInt(this.getAttribute('data-index')));
       });
     });
   }
 
-  function loadAndRender(){fetchComments(renderComments);}
+  function loadAndRender() { fetchComments(renderComments); }
 
-  function showPwd(title,msg){
-    document.getElementById('gb-page-pwd-title').textContent=title||'🔐 输入密码';
-    document.getElementById('gb-page-pwd-msg').textContent=msg||'';
-    document.getElementById('gb-page-pwd-overlay').style.display='flex';
-    document.getElementById('gb-page-pwd-input').value='';
+  function showPwd(title, msg) {
+    document.getElementById('gb-page-pwd-title').textContent = title || '🔐 输入密码';
+    document.getElementById('gb-page-pwd-msg').textContent = msg || '';
+    document.getElementById('gb-page-pwd-overlay').style.display = 'flex';
+    document.getElementById('gb-page-pwd-input').value = '';
     document.getElementById('gb-page-pwd-input').focus();
   }
-  function hidePwd(){document.getElementById('gb-page-pwd-overlay').style.display='none';}
+  function hidePwd() { document.getElementById('gb-page-pwd-overlay').style.display = 'none'; }
 
   // ============ Submit ============
-  document.getElementById('gb-page-submit-btn').addEventListener('click',function(){
-    var msg=document.getElementById('gb-page-input-msg').value.trim();
-    if(!msg){document.getElementById('gb-page-status').textContent='请输入留言内容';document.getElementById('gb-page-status').className='gb-page-status-error';return;}
-    pendingAction='submit';
+  document.getElementById('gb-page-submit-btn').addEventListener('click', function() {
+    var msg = document.getElementById('gb-page-input-msg').value.trim();
+    if (!msg) { document.getElementById('gb-page-status').textContent = '请输入留言内容'; document.getElementById('gb-page-status').className = 'gb-page-status-error'; return; }
+    pendingAction = 'submit';
     showPwd('🔐 发送留言 - 输入密码');
   });
 
   // ============ Delete ============
-  function startDelete(index){
-    if(!COMMENTS_CACHE||index<0||index>=COMMENTS_CACHE.length) return;
-    pendingAction={type:'delete',index:index};
-    var c=COMMENTS_CACHE[index];
-    showPwd('🔐 删除留言 - 输入密码','将删除：'+ (c.name||'匿名')+' 的留言（'+formatTime(c.time||'')+'）');
+  function startDelete(index) {
+    if (!COMMENTS_CACHE || index < 0 || index >= COMMENTS_CACHE.length) return;
+    pendingAction = { type: 'delete', index: index };
+    var c = COMMENTS_CACHE[index];
+    showPwd('🔐 删除留言 - 输入密码', '将删除：' + (c.name || '匿名') + ' 的留言（' + formatTime(c.time || '') + '）');
   }
 
-  function doDelete(pwd, index){
-    var token=resolveToken(pwd);
-    if(!token){showPwd('🔐 密码错误','密码错误，请重试');pendingAction=null;return;}
-    var st=document.getElementById('gb-page-status');
-    st.textContent='⏳ 删除中…';st.className='';
-    getFileSha(token,function(sha){
-      if(!COMMENTS_CACHE) return;
-      var comments=COMMENTS_CACHE.slice();
-      comments.splice(index,1);
-      saveComments(token,comments,sha,'🗑️ 删除留言',function(){
-        COMMENTS_CACHE=comments;renderComments(comments);
-        st.textContent='✅ 已删除';st.className='gb-page-status-success';
-        pendingAction=null;
-      },function(err){
-        st.textContent='❌ '+err;st.className='gb-page-status-error';pendingAction=null;
-      });
-    },function(err){
-      st.textContent='❌ '+err;st.className='gb-page-status-error';pendingAction=null;
+  function doDelete(pwd, index) {
+    var token = resolveToken(pwd);
+    if (!token) { showPwd('🔐 密码错误', '密码错误，请重试'); pendingAction = null; return; }
+    var st = document.getElementById('gb-page-status');
+    st.textContent = '⏳ 删除中…'; st.className = '';
+    // 直接操作缓存中已获取的最新数据 + SHA
+    if (!COMMENTS_CACHE) { st.textContent = '❌ 数据未加载'; st.className = 'gb-page-status-error'; pendingAction = null; return; }
+    var comments = COMMENTS_CACHE.slice();
+    comments.splice(index, 1);
+    saveComments(token, comments, FILE_SHA, '🗑️ 删除留言', function() {
+      COMMENTS_CACHE = comments; renderComments(comments);
+      st.textContent = '✅ 已删除'; st.className = 'gb-page-status-success';
+      pendingAction = null;
+    }, function(err) {
+      st.textContent = '❌ ' + err; st.className = 'gb-page-status-error'; pendingAction = null;
     });
   }
 
   // ============ Password confirm ============
-  document.getElementById('gb-page-pwd-cancel').addEventListener('click',function(){hidePwd();pendingAction=null;});
-  document.getElementById('gb-page-pwd-confirm').addEventListener('click',function(){
-    var pwd=document.getElementById('gb-page-pwd-input').value.trim();
-    if(!pwd){showPwd('🔐 请输入密码','请输入密码');return;}
+  document.getElementById('gb-page-pwd-cancel').addEventListener('click', function() { hidePwd(); pendingAction = null; });
+  document.getElementById('gb-page-pwd-confirm').addEventListener('click', function() {
+    var pwd = document.getElementById('gb-page-pwd-input').value.trim();
+    if (!pwd) { showPwd('🔐 请输入密码', '请输入密码'); return; }
     hidePwd();
-    if(pendingAction==='submit'){doSubmit(pwd);}
-    else if(pendingAction&&pendingAction.type==='delete'){doDelete(pwd,pendingAction.index);}
-    pendingAction=null;
+    if (pendingAction === 'submit') { doSubmit(pwd); }
+    else if (pendingAction && pendingAction.type === 'delete') { doDelete(pwd, pendingAction.index); }
+    pendingAction = null;
   });
-  document.getElementById('gb-page-pwd-input').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('gb-page-pwd-confirm').click();});
+  document.getElementById('gb-page-pwd-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('gb-page-pwd-confirm').click(); });
 
-  function doSubmit(pwd){
-    var token=resolveToken(pwd);
-    if(!token){showPwd('🔐 密码错误','密码错误，请重试');pendingAction=null;return;}
-    var name=document.getElementById('gb-page-input-name').value.trim();
-    var msg=document.getElementById('gb-page-input-msg').value.trim();
-    var btn=document.getElementById('gb-page-submit-btn'),st=document.getElementById('gb-page-status');
-    btn.disabled=true;st.textContent='⏳ 提交中…';st.className='';
-    getFileSha(token,function(sha){
-      var comments=(COMMENTS_CACHE&&COMMENTS_CACHE.length)?COMMENTS_CACHE.slice():[];
-      comments.push({name:name||'匿名',message:msg,time:new Date().toISOString()});
-      saveComments(token,comments,sha,'💬 新增留言 ('+new Date().toISOString().slice(0,10)+')',function(){
-        COMMENTS_CACHE=comments;renderComments(comments);
-        document.getElementById('gb-page-input-msg').value='';
-        document.getElementById('gb-page-input-name').value='';
-        document.getElementById('gb-page-char-count').textContent='0/500';
-        st.textContent='✅ 留言已发送！';st.className='gb-page-status-success';btn.disabled=false;
-      },function(err){st.textContent='❌ '+err;st.className='gb-page-status-error';btn.disabled=false;});
-    },function(err){st.textContent='❌ '+err;st.className='gb-page-status-error';btn.disabled=false;});
+  function doSubmit(pwd) {
+    var token = resolveToken(pwd);
+    if (!token) { showPwd('🔐 密码错误', '密码错误，请重试'); pendingAction = null; return; }
+    var name = document.getElementById('gb-page-input-name').value.trim();
+    var msg = document.getElementById('gb-page-input-msg').value.trim();
+    var btn = document.getElementById('gb-page-submit-btn'), st = document.getElementById('gb-page-status');
+    btn.disabled = true; st.textContent = '⏳ 提交中…'; st.className = '';
+    var comments = (COMMENTS_CACHE && COMMENTS_CACHE.length) ? COMMENTS_CACHE.slice() : [];
+    comments.push({ name: name || '匿名', message: msg, time: new Date().toISOString() });
+    saveComments(token, comments, FILE_SHA, '💬 新增留言 (' + new Date().toISOString().slice(0, 10) + ')', function() {
+      COMMENTS_CACHE = comments; renderComments(comments);
+      document.getElementById('gb-page-input-msg').value = '';
+      document.getElementById('gb-page-input-name').value = '';
+      document.getElementById('gb-page-char-count').textContent = '0/500';
+      st.textContent = '✅ 留言已发送！'; st.className = 'gb-page-status-success'; btn.disabled = false;
+    }, function(err) { st.textContent = '❌ ' + err; st.className = 'gb-page-status-error'; btn.disabled = false; });
   }
 
-  document.getElementById('gb-page-input-msg').addEventListener('input',function(){
-    document.getElementById('gb-page-char-count').textContent=this.value.length+'/500';
+  document.getElementById('gb-page-input-msg').addEventListener('input', function() {
+    document.getElementById('gb-page-char-count').textContent = this.value.length + '/500';
   });
 
   loadAndRender();
