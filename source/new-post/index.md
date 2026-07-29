@@ -6,7 +6,7 @@ type: "newpost"
 
 ## 📝 新增页面
 
-填写内容后点击"提交"，输入密码 `lcy666` 即可创建新文章。
+填写文章标题和内容（Markdown 格式），点击提交后需验证身份。
 
 <div id="newpost-form-container">
   <div class="np-field">
