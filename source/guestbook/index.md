@@ -108,7 +108,7 @@ type: "guestbook"
       if (!tok||(!tok.startsWith('ghp_')&&!tok.startsWith('github_pat_'))) return null;
       setCachedToken(tok); return tok;
     }
-    return getCachedToken();
+    return null; // no cached-token fallback
   }
 
   function fetchComments(cb) {
@@ -156,8 +156,8 @@ type: "guestbook"
   document.getElementById('gb-page-submit-btn').addEventListener('click',function(){
     var msg=document.getElementById('gb-page-input-msg').value.trim();
     if(!msg){document.getElementById('gb-page-status').textContent='请输入留言内容';document.getElementById('gb-page-status').className='gb-page-status-error';return;}
-    var cached=getCachedToken();
-    if(cached){doSubmit(null);return;}
+    var cached = null; //
+    // always require password
     document.getElementById('gb-page-pwd-overlay').style.display='flex';
     document.getElementById('gb-page-pwd-input').value='';
     document.getElementById('gb-page-pwd-msg').textContent='';
