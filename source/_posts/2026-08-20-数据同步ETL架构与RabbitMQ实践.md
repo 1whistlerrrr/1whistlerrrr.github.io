@@ -391,7 +391,6 @@ Kafka 擅长事件流和高吞吐回放，RabbitMQ 擅长业务任务路由和�
 ## 相关资源
 
 - [材料安全数据同步故障治理](../_drafts/材料安全数据同步-从业务链路到ETL故障治理.md)
-- [数据同步排障记录](../../../../HARNESS/szxa-next-harness/szxa-next-webapi/docs/datasync-troubleshooting-log.md)
 
 ---
 
